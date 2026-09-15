@@ -30,7 +30,8 @@ export const STAGES = [
 
 const at = (p, i) => clamp((p - STAGES[i][1]) / (STAGES[i][2] - STAGES[i][1]));
 
-const CATCHUP = 0.04;      // most of a sitting a frame can take on at once
+const CATCHUP = 0.015;     // where catching up starts before it is measured
+const FRAME_MS = 24;       // how long a catching-up frame is allowed to take
 
 /* ── the canvas itself ───────────────────────────────────────── */
 
@@ -75,7 +76,7 @@ export const painting = {
     if (st.lastW !== w || st.lastH !== h || st.layer.width !== Math.round(w * dpr)) {
       st.layer.width = Math.round(w * dpr);
       st.layer.height = Math.round(h * dpr);
-      st.lastW = w; st.lastH = h; st.doneP = -1; st.masked = false;
+      st.lastW = w; st.lastH = h; st.doneP = -1; st.masked = false; st.step = CATCHUP;
       st.cache.clear();
     }
 
@@ -101,12 +102,22 @@ export const painting = {
       if (st.doneP < 0) { lc.clearRect(0, 0, w, h); ground(lc, env, C, F); st.doneP = 0; }
       if (p > st.doneP) {
         // Opening the page an hour into a task means catching up on an hour
-        // of painting. Do it a slice at a time instead of in one long freeze:
-        // the picture paints itself quickly onto the screen, which is a
-        // better thing to watch than a stalled frame anyway.
-        const to = Math.min(p, st.doneP + CATCHUP);
+        // of painting. Do it a slice at a time instead of in one long freeze —
+        // the picture paints itself quickly onto the screen, which is a better
+        // thing to watch than a stalled frame. How big a slice fits in a frame
+        // depends on the picture and the phone, so measure it and adjust.
+        const step = st.step || CATCHUP;
+        const to = Math.min(p, st.doneP + step);
+        const t0 = performance.now();
         paintRange(lc, env, subject, C, F, st.doneP, to);
         st.doneP = to;
+        const took = performance.now() - t0;
+        if (to < p) {
+          const aim = took > 0.5 ? step * (FRAME_MS / took) : step * 2;
+          st.step = clamp(aim, 0.0015, 0.06);
+        } else {
+          st.step = CATCHUP;
+        }
       }
     } else if (Math.abs(p - st.doneP) > 0.0012) {
       lc.clearRect(0, 0, w, h);
@@ -210,13 +221,20 @@ function paintRange(ctx, env, subject, C, F, p0, p1) {
       return b > a ? [a, b] : null;
     },
 
-    /** The marks of an ordered list that land in this step. */
-    batch(from, to, list, fn) {
+    /**
+     * The marks of an ordered list that land in this step. The list is built
+     * the first time the pass is reached and thrown away the moment it is
+     * finished, so a canvas of a hundred thousand strokes only ever holds one
+     * pass worth of them in memory.
+     */
+    batch(from, to, key, make, fn) {
       const s = g.span(from, to);
       if (!s) return;
+      const list = g.cache(key, make);
       const n = list.length;
       const i0 = Math.floor(s[0] * n), i1 = Math.floor(s[1] * n);
       for (let i = i0; i < i1 && i < n; i++) fn(list[i], i, n);
+      if (s[1] >= 1) cache.delete(key);
     },
 
     /** The piece of a drawn line that gets drawn in this step. */
@@ -267,14 +285,14 @@ function paintRange(ctx, env, subject, C, F, p0, p1) {
   // the thin ground the picture is drawn on: a tone rubbed over the whole
   // canvas, then fine brush marks worked into it — quiet enough that the
   // charcoal still reads over the top
-  g.batch(0.0, 0.055, g.cache('wash', () => {
+  g.batch(0.0, 0.055, 'wash', () => {
     const rr = makeRng((seed ^ 0x9e37) >>> 0);
     const out = [{ tone: true }];
-    for (let i = 0; i < 2400; i++) {
+    for (let i = 0; i < 3600; i++) {
       out.push({ x: F.x + rr() * F.w, y: F.y + rr() * F.h, k: rr(), a: -0.2 + (rr() - 0.5) * 0.42 });
     }
     return out;
-  }), (q) => {
+  }, (q) => {
     ctx.save();
     if (q.tone) {
       ctx.globalAlpha = 0.5;
