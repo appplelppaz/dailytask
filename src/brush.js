@@ -256,3 +256,89 @@ export const segPts = (s, n = 5) => {
   return out;
 };
 const lerpN = (a, b, t) => a + (b - a) * t;
+
+/* ── a loaded brush ──────────────────────────────────────────── */
+
+/**
+ * One mark of a brush carrying oil paint, built the way the real thing
+ * behaves rather than as a line with a highlight down the middle.
+ *
+ * A loaded flat brush lands blunt, drags at close to full width while
+ * the paint lasts, and thins out at the end. The bristles comb the paint
+ * into streaks along the direction of travel. Where the brush pushes the
+ * paint aside a ridge stands up along the edges, so the light catches one
+ * edge and the other throws a shadow — the light is never a line down the
+ * centre of the stroke, which is what makes a rendered stroke look like a
+ * plastic tube.
+ *
+ * `len` is how far the brush travelled, `wide` the width of the ferrule.
+ */
+export function oil(ctx, x, y, len, ang, wide, color, opts = {}) {
+  const {
+    alpha = 1, curve = 0.3, light = -2.35, bristle = 3,
+    tail = 0.55, relief = 1, k = 0.5, body = 1
+  } = opts;
+
+  const dx = Math.cos(ang), dy = Math.sin(ang);
+  const nx = -dy, ny = dx;
+  const bow = len * curve * 0.17;
+  const N = 7;
+
+  const at = (t) => {
+    const s = Math.sin(t * Math.PI);
+    return { x: x + dx * len * t + nx * bow * s, y: y + dy * len * t + ny * bow * s };
+  };
+  // blunt where it lands, full while the paint lasts, dragging out at the end
+  const half = (t) =>
+    wide * 0.5 * body * (0.58 + 0.42 * Math.sin(Math.PI * Math.min(1, t * 2.6))) * (1 - Math.pow(t, 2.6) * tail);
+
+  const L = [], R = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, p = at(t), h = half(t);
+    L.push({ x: p.x + nx * h, y: p.y + ny * h });
+    R.push({ x: p.x - nx * h, y: p.y - ny * h });
+  }
+
+  // the body of paint
+  ctx.beginPath();
+  ctx.moveTo(L[0].x, L[0].y);
+  for (let i = 1; i <= N; i++) ctx.lineTo(L[i].x, L[i].y);
+  for (let i = N; i >= 0; i--) ctx.lineTo(R[i].x, R[i].y);
+  ctx.closePath();
+  ctx.fillStyle = css(color, alpha);
+  ctx.fill();
+
+  // the comb of the bristles, along the travel
+  if (bristle > 0 && wide > 1.2) {
+    ctx.lineCap = 'butt';
+    for (let i = 0; i < bristle; i++) {
+      const u = (i + 0.5) / bristle - 0.5;
+      const shade = ((i * 37 + k * 91) % 1) - 0.5;
+      ctx.beginPath();
+      for (let j = 0; j <= N; j++) {
+        const t = j / N, p = at(t), h = half(t) * u * 1.5;
+        const px = p.x + nx * h, py = p.y + ny * h;
+        ctx[j ? 'lineTo' : 'moveTo'](px, py);
+      }
+      ctx.strokeStyle = css([color[0], color[1], color[2] + shade * 9 * relief], alpha * 0.55);
+      ctx.lineWidth = Math.max(0.5, wide / bristle * 0.55);
+      ctx.stroke();
+    }
+  }
+
+  // the ridge the brush pushes up, lit on one side and shadowed on the other
+  const lit = Math.cos(light) * nx + Math.sin(light) * ny > 0 ? 1 : -1;
+  const edge = (side, col, a, wk) => {
+    ctx.beginPath();
+    for (let j = 0; j <= N; j++) {
+      const t = j / N, p = at(t), h = half(t) * side * 0.86;
+      ctx[j ? 'lineTo' : 'moveTo'](p.x + nx * h, p.y + ny * h);
+    }
+    ctx.strokeStyle = css(col, a);
+    ctx.lineWidth = Math.max(0.4, wide * wk);
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  };
+  edge(lit, [color[0], color[1] * 0.78, Math.min(96, color[2] + 13 * relief)], alpha * 0.85, 0.15);
+  edge(-lit, [color[0], Math.min(100, color[1] * 1.06), Math.max(2, color[2] - 11 * relief)], alpha * 0.7, 0.17);
+}
