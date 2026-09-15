@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // The record: a plain month calendar. One cell per day, six marks
-// per cell — one for each task, filled when it was completed.
-// Tapping a day names them.
+// per cell — one for each task, in a fixed order and each with its
+// own colour, lit when that task was completed.
 // ─────────────────────────────────────────────────────────────
 
 import { TASKS, dateKey } from './schedule.js';
@@ -9,9 +9,19 @@ import { store } from './store.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
+// Six well-separated hues. Position still carries the meaning, so the
+// colour is reinforcement rather than the only cue.
+export const TASK_COLORS = {
+  PIANO:   '#e3b34a',   // amber
+  ENGLISH: '#57a5e8',   // sky
+  CHINESE: '#e8697c',   // rose
+  SPANISH: '#a98cf0',   // violet
+  FRENCH:  '#3fc6ab',   // teal
+  WORKOUT: '#9ed155'    // lime
+};
+
 let refDay = 0;        // today, as a day number
 let shown = null;      // { y, m } the month on screen
-let picked = null;     // day number the person tapped
 
 const dayNumFrom = (y, m, d) => Math.round(Date.UTC(y, m - 1, d) / 86400000);
 const partsOf = (dn) => {
@@ -19,13 +29,10 @@ const partsOf = (dn) => {
   return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), w: d.getUTCDay() };
 };
 
-const doneOn = (dn) => TASKS.map((t) => store.entry(dateKey(dn), t.key));
-
 export function renderArchive(root, today) {
   refDay = today;
   const p = partsOf(today);
   if (!shown) shown = { y: p.y, m: p.m };
-  if (picked === null) picked = today;
   draw(root);
 }
 
@@ -67,15 +74,13 @@ function draw(root) {
 
   for (let d = 1; d <= days; d++) {
     const dn = dayNumFrom(shown.y, shown.m, d);
-    const entries = doneOn(dn);
-    const count = entries.filter(Boolean).length;
+    const done = TASKS.map((t) => !!store.entry(dateKey(dn), t.key));
+    const count = done.filter(Boolean).length;
     const future = dn > refDay;
 
-    const cell = document.createElement('button');
-    cell.type = 'button';
+    const cell = document.createElement('div');
     cell.className = 'cal-day';
     if (dn === refDay) cell.dataset.today = '1';
-    if (dn === picked) cell.dataset.picked = '1';
     if (future) cell.dataset.future = '1';
     if (count === TASKS.length) cell.dataset.full = '1';
 
@@ -86,52 +91,38 @@ function draw(root) {
 
     const dots = document.createElement('span');
     dots.className = 'cal-dots';
-    entries.forEach((entry, i) => {
+    done.forEach((isDone, i) => {
       const dot = document.createElement('i');
-      if (entry) dot.dataset.on = '1';
-      dot.title = TASKS[i].key;
+      const key = TASKS[i].key;
+      if (isDone) {
+        dot.dataset.on = '1';
+        dot.style.background = TASK_COLORS[key];
+      }
+      dot.title = key;
       dots.appendChild(dot);
     });
     cell.appendChild(dots);
 
+    const doneNames = TASKS.filter((_, i) => done[i]).map((t) => t.key);
     cell.setAttribute('aria-label', future
       ? `${shown.m}月${d}日`
-      : `${shown.m}月${d}日 ${TASKS.length}件中${count}件完了`);
-    cell.addEventListener('click', () => { picked = dn; draw(root); });
+      : `${shown.m}月${d}日 ${doneNames.length ? doneNames.join('、') + ' 完了' : '完了なし'}`);
     grid.appendChild(cell);
   }
   root.appendChild(grid);
 
-  // ── what that day actually held ──
-  const detail = document.createElement('div');
-  detail.className = 'cal-detail';
-  const dp = partsOf(picked);
-  const dHead = document.createElement('p');
-  dHead.className = 'cal-detail-head';
-  dHead.textContent = `${dp.m}月${dp.d}日（${WEEKDAYS[dp.w]}）`;
-  detail.appendChild(dHead);
-
-  const list = document.createElement('ul');
-  list.className = 'cal-list';
-  doneOn(picked).forEach((entry, i) => {
-    const li = document.createElement('li');
-    if (entry) li.dataset.on = '1';
-    const dot = document.createElement('i');
-    const name = document.createElement('span');
-    name.className = 'cal-task';
-    name.textContent = TASKS[i].key;
-    const state = document.createElement('span');
-    state.className = 'cal-state';
-    state.textContent = entry ? '完了' : '未完了';
-    li.append(dot, name, state);
-    list.appendChild(li);
-  });
-  detail.appendChild(list);
-  root.appendChild(detail);
-
-  const legend = document.createElement('p');
+  // ── which colour is which ──
+  const legend = document.createElement('ul');
   legend.className = 'cal-legend';
-  legend.textContent = `各日の6つの点は左から ${TASKS.map((t) => t.key).join(' · ')}`;
+  for (const t of TASKS) {
+    const li = document.createElement('li');
+    const dot = document.createElement('i');
+    dot.style.background = TASK_COLORS[t.key];
+    const name = document.createElement('span');
+    name.textContent = t.key;
+    li.append(dot, name);
+    legend.appendChild(li);
+  }
   root.appendChild(legend);
 }
 
