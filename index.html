@@ -1,0 +1,1178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#050505">
+<title>NIGHT ROUTINE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+          mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace']
+        }
+      }
+    }
+  };
+</script>
+<style>
+  /* ═══════════════════════════════════════════════════════════
+     THEME TOKENS — every colour in the app resolves to a var,
+     so swapping a theme is a single batch of setProperty calls.
+     ═══════════════════════════════════════════════════════════ */
+  :root {
+    --bg: #050505;      --surface: #0b0b0b;  --border: #1e1e1e;
+    --track: #27272a;   --fg: #fafafa;       --muted: #8b8b8b;
+    --dim: #4b4b4b;     --accent: #10b981;   --accent2: #34d399;
+    --glow: rgba(16,185,129,.16); --glow2: rgba(52,211,153,.10);
+    --line: rgba(255,255,255,.07); --on-accent: #050505;
+    --backdrop: rgba(0,0,0,.82);
+    --track-h: 5px; --track-hover-h: 9px; --bar-radius: 999px;
+    --thumb-rot: 0deg;
+  }
+
+  html, body { background: var(--bg); }
+  body {
+    color: var(--fg);
+    -webkit-tap-highlight-color: transparent;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transition: background-color .7s ease, color .7s ease;
+  }
+  ::selection { background: var(--accent); color: var(--on-accent); }
+
+  .c-fg { color: var(--fg); }
+  .c-muted { color: var(--muted); }
+  .c-dim { color: var(--dim); }
+  .c-accent { color: var(--accent); }
+  .c-surface { background: var(--surface); }
+  .c-border { border-color: var(--border); }
+  .c-accent-bg { background: var(--accent); color: var(--on-accent); }
+  .c-accent-soft { background: var(--glow); }
+  .c-backdrop { background: var(--backdrop); }
+  .hoverable:hover { color: var(--fg); }
+
+  /* ── atmosphere layer (per-theme background texture) ── */
+  .atmo { position: fixed; inset: 0; z-index: 0; pointer-events: none; transition: opacity .7s ease; }
+  [data-atmo="plain"] .atmo { background: none; }
+  [data-atmo="grid"] .atmo {
+    background-image: linear-gradient(var(--line) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(circle at 50% 35%, #000 10%, transparent 80%);
+            mask-image: radial-gradient(circle at 50% 35%, #000 10%, transparent 80%);
+  }
+  [data-atmo="dots"] .atmo {
+    background-image: radial-gradient(var(--line) 1.2px, transparent 1.2px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(circle at 50% 40%, #000 5%, transparent 78%);
+            mask-image: radial-gradient(circle at 50% 40%, #000 5%, transparent 78%);
+  }
+  [data-atmo="vignette"] .atmo { background: radial-gradient(circle at 50% 28%, transparent 38%, rgba(0,0,0,.6) 100%); }
+  [data-atmo="aurora"] .atmo {
+    background: radial-gradient(58% 40% at 18% 2%, var(--glow), transparent 70%),
+                radial-gradient(52% 38% at 92% 98%, var(--glow2), transparent 72%);
+  }
+  [data-atmo="scanlines"] .atmo { background: repeating-linear-gradient(180deg, var(--line) 0 1px, transparent 1px 5px); opacity: .55; }
+  [data-atmo="diagonal"] .atmo { background: repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 15px); opacity: .7; }
+  [data-atmo="topglow"] .atmo { background: radial-gradient(76% 42% at 50% -12%, var(--glow), transparent 72%); }
+  .shell { position: relative; z-index: 1; }
+
+  /* ═══════════════════════════════════════════════════════════
+     YOUTUBE-STYLE TASK BAR
+     ═══════════════════════════════════════════════════════════ */
+  .yt-bar {
+    position: relative; display: flex; align-items: center;
+    height: 36px; cursor: pointer; touch-action: none; user-select: none;
+  }
+  .yt-bar[data-locked="1"] { cursor: default; }
+  .yt-track {
+    position: relative; width: 100%;
+    height: var(--track-h);
+    border-radius: var(--bar-radius);
+    background: var(--track);
+    transition: height .16s cubic-bezier(.4,0,.2,1), background-color .7s ease;
+  }
+  .yt-bar:hover .yt-track, .yt-bar.dragging .yt-track { height: var(--track-hover-h); }
+  .yt-hoverfill, .yt-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--bar-radius); }
+  .yt-hoverfill { background: var(--border); width: 0; }
+  .yt-fill { background: var(--accent); transition: background-color .7s ease; }
+  .yt-thumb {
+    position: absolute; top: 50%; height: 15px; width: 15px; margin-left: -7.5px;
+    border-radius: 999px; background: var(--fg);
+    box-shadow: 0 0 0 2px var(--glow), 0 1px 6px rgba(0,0,0,.6);
+    transform: translateY(-50%) rotate(var(--thumb-rot)) scale(.82);
+    transition: transform .16s cubic-bezier(.4,0,.2,1), opacity .16s ease;
+    pointer-events: none;
+  }
+  .yt-bar:hover .yt-thumb, .yt-bar.dragging .yt-thumb,
+  .yt-bar:focus-visible .yt-thumb { transform: translateY(-50%) rotate(var(--thumb-rot)) scale(1.3); }
+  .yt-bar[data-locked="1"] .yt-thumb { opacity: .2; }
+  .yt-tip {
+    position: absolute; bottom: 32px; transform: translateX(-50%);
+    padding: 3px 7px; border-radius: 5px; background: var(--surface);
+    border: 1px solid var(--border); color: var(--fg);
+    font-size: 11px; letter-spacing: .05em; white-space: nowrap;
+    pointer-events: none; opacity: 0; transition: opacity .12s ease;
+  }
+  .yt-bar:hover .yt-tip, .yt-bar.dragging .yt-tip { opacity: 1; }
+
+  /* ── bar variants ── */
+  [data-bar="gradient"] .yt-fill { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+  [data-bar="glow"]     .yt-fill { box-shadow: 0 0 14px var(--accent), 0 0 4px var(--accent); }
+  [data-bar="striped"]  .yt-fill { background: repeating-linear-gradient(115deg, var(--accent) 0 9px, var(--accent2) 9px 18px); }
+  [data-bar="segmented"] .yt-fill {
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 11px, transparent 11px 14px);
+            mask-image: repeating-linear-gradient(90deg, #000 0 11px, transparent 11px 14px);
+  }
+  [data-bar="dual"] .yt-fill { background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%); }
+  [data-bar="ghost"] .yt-track { background: transparent; box-shadow: inset 0 0 0 1px var(--track); }
+  [data-bar="ghost"] .yt-fill  { opacity: .9; }
+  [data-bar="thick"] { --track-h: 12px; --track-hover-h: 16px; }
+  [data-bar="thin"]  { --track-h: 3px;  --track-hover-h: 7px; }
+  [data-bar="notch"] { --bar-radius: 2px; }
+  [data-bar="notch"] .yt-fill { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+
+  /* ── thumb variants ── */
+  [data-thumb="ring"]    .yt-thumb { background: var(--bg); box-shadow: inset 0 0 0 3px var(--accent), 0 1px 6px rgba(0,0,0,.6); }
+  [data-thumb="square"]  .yt-thumb { border-radius: 3px; }
+  [data-thumb="diamond"] { --thumb-rot: 45deg; }
+  [data-thumb="diamond"] .yt-thumb { border-radius: 2px; }
+  [data-thumb="bar"]     .yt-thumb { width: 6px; height: 22px; margin-left: -3px; border-radius: 3px; }
+  [data-thumb="soft"]    .yt-thumb { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+  /* ── title variants ── */
+  #title { color: var(--fg); transition: color .7s ease, opacity .4s ease; }
+  #title.dim { opacity: .42; }
+  [data-title="black"]   #title { font-weight: 900; letter-spacing: -.035em; }
+  [data-title="wide"]    #title { font-weight: 600; letter-spacing: .07em; }
+  [data-title="outline"] #title { color: transparent; -webkit-text-stroke: 2px var(--fg); }
+  [data-title="mono"]    #title { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 700; letter-spacing: -.02em; }
+  [data-title="light"]   #title { font-weight: 300; letter-spacing: .015em; }
+  [data-title="tight"]   #title { font-weight: 800; letter-spacing: -.055em; }
+  [data-title="accent"]  #title { font-weight: 800; letter-spacing: -.03em; color: var(--accent); }
+
+  /* ── chapter / session overview ── */
+  .chapter { position: relative; height: 4px; border-radius: var(--bar-radius); background: var(--border); overflow: hidden; transition: background-color .7s ease; }
+  .chapter > i { position: absolute; left: 0; top: 0; bottom: 0; display: block; background: var(--accent); opacity: .55; border-radius: var(--bar-radius); }
+  .chapter[data-state="current"] { background: var(--track); }
+  .chapter[data-state="current"] > i { opacity: 1; }
+
+  /* ── motion ── */
+  @keyframes riseIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .rise { animation: riseIn .5s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes pulseDot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(.8); } }
+  .live-dot { animation: pulseDot 2s ease-in-out infinite; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .fade-up { animation: fadeUp .32s ease-out both; }
+  @keyframes flashTheme { from { opacity: .55; } to { opacity: 0; } }
+  .theme-flash { position: fixed; inset: 0; z-index: 60; pointer-events: none; background: var(--accent); animation: flashTheme .55s ease-out forwards; }
+  @media (prefers-reduced-motion: reduce) {
+    .rise, .live-dot, .fade-up, .theme-flash { animation: none !important; }
+    body, .yt-track, .yt-fill, .chapter { transition: none !important; }
+  }
+  .no-scroll { overflow: hidden; }
+</style>
+</head>
+<body class="min-h-screen font-sans antialiased" data-atmo="plain" data-bar="solid" data-thumb="circle" data-title="black">
+
+<div class="atmo"></div>
+
+<div class="shell mx-auto flex min-h-screen w-full max-w-3xl flex-col">
+
+  <!-- ══════════════ HEADER ══════════════ -->
+  <header class="flex items-center justify-between px-5 pt-6 sm:px-8">
+    <div class="flex items-center gap-2.5">
+      <span id="dot" class="live-dot block h-2.5 w-2.5 rounded-full"></span>
+      <span id="clock" class="c-muted font-mono text-[11px] tracking-[0.22em]">--:--:--</span>
+    </div>
+    <button id="historyBtn" type="button"
+      class="c-muted hoverable -mr-2 flex min-h-[44px] items-center px-2 font-mono text-[11px] tracking-[0.22em] transition focus:outline-none">
+      HISTORY
+    </button>
+  </header>
+
+  <!-- ══════════════ MAIN ══════════════ -->
+  <main class="flex flex-1 flex-col justify-center px-5 py-10 sm:px-8">
+
+    <p id="status" class="c-muted font-mono text-[11px] tracking-[0.25em]">&nbsp;</p>
+
+    <h1 id="title" class="mt-3 text-[clamp(2.75rem,13vw,5.5rem)] font-extrabold leading-[0.95] tracking-tight">&nbsp;</h1>
+
+    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <span id="window" class="c-muted font-mono text-sm">&nbsp;</span>
+      <span id="badge" class="c-accent c-accent-soft hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] tracking-[0.18em]">
+        <span class="h-1.5 w-1.5 rounded-full" style="background:var(--accent)"></span>COMPLETED TODAY
+      </span>
+    </div>
+
+    <!-- ── bar-style seekbar ── -->
+    <section class="mt-9 select-none">
+      <div id="bar" class="yt-bar" role="slider" tabindex="0" aria-label="Task progress"
+           aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="yt-track">
+          <div id="hoverfill" class="yt-hoverfill"></div>
+          <div id="fill" class="yt-fill" style="width:0%"></div>
+          <div id="thumb" class="yt-thumb" style="left:0%"></div>
+        </div>
+        <div id="tip" class="yt-tip font-mono" style="left:0%">0:00</div>
+      </div>
+
+      <div class="mt-1 flex items-center justify-between font-mono text-[13px] sm:text-sm">
+        <span id="elapsed" class="c-fg tabular-nums">0:00</span>
+        <button id="liveBtn" type="button"
+          class="c-accent hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] tracking-[0.18em] transition"
+          style="box-shadow: inset 0 0 0 1px var(--accent)">
+          <span class="h-1.5 w-1.5 rounded-full" style="background:var(--accent)"></span>BACK TO LIVE
+        </button>
+        <span id="remaining" class="c-muted tabular-nums">-0:00</span>
+      </div>
+      <div class="c-dim mt-1 flex items-center justify-between font-mono text-[10px] tracking-[0.18em]">
+        <span>ELAPSED</span>
+        <span id="duration" class="tabular-nums">0:00</span>
+        <span>REMAINING</span>
+      </div>
+    </section>
+
+    <!-- ── 15s completion tap prompt ── -->
+    <div id="prompt" class="mt-7 hidden">
+      <button id="promptBtn" type="button"
+        class="c-accent-soft fade-up flex min-h-[64px] w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition active:scale-[.99]"
+        style="box-shadow: inset 0 0 0 1px var(--accent)">
+        <span class="c-accent font-mono text-[12px] font-medium tracking-[0.16em] sm:text-sm">
+          TAP TO MARK <span id="promptTask" class="c-fg">TASK</span> COMPLETED
+        </span>
+        <span id="promptCount" class="c-accent-bg shrink-0 rounded-full px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums">15s</span>
+      </button>
+      <div class="mt-2 h-[3px] w-full overflow-hidden rounded-full" style="background:var(--border)">
+        <div id="promptBar" class="h-full rounded-full" style="width:100%;background:var(--accent)"></div>
+      </div>
+    </div>
+
+    <!-- ── session overview ── -->
+    <section class="mt-10">
+      <div class="c-dim flex items-end justify-between gap-3 font-mono text-[10px] tracking-[0.2em]">
+        <span class="truncate"><span class="hidden sm:inline">SESSION&nbsp;&nbsp;</span><span id="sessionLabel"></span></span>
+        <span id="sessionTime" class="shrink-0 tabular-nums">&nbsp;</span>
+      </div>
+      <div id="chapters" class="mt-2 flex items-center gap-[3px]"></div>
+      <div id="chapterLabels" class="mt-2 hidden gap-[3px] sm:flex"></div>
+    </section>
+
+    <!-- ── theme / sound shuffle ── -->
+    <div class="mt-9 flex flex-wrap items-center justify-between gap-3">
+      <button id="themeBtn" type="button"
+        class="c-dim hoverable flex min-h-[44px] items-center gap-2 font-mono text-[10px] tracking-[0.18em] transition">
+        <span class="h-1.5 w-1.5 rotate-45" style="background:var(--accent)"></span>
+        <span id="themeLabel">THEME</span>
+      </button>
+      <p id="hint" class="c-dim font-mono text-[10px] tracking-[0.16em]">&nbsp;</p>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════════ HISTORY MODAL ══════════════ -->
+<div id="modal" class="fixed inset-0 z-50 hidden">
+  <div id="backdrop" class="c-backdrop absolute inset-0 backdrop-blur-sm"></div>
+  <div class="absolute inset-0 flex items-end justify-center p-0 sm:items-center sm:p-6">
+    <div class="c-surface c-border rise flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border sm:rounded-3xl"
+         style="padding-bottom: env(safe-area-inset-bottom, 0px)">
+      <div class="c-border flex items-center justify-between border-b px-5 py-4">
+        <h2 class="c-muted font-mono text-[11px] tracking-[0.25em]">HISTORY</h2>
+        <button id="closeBtn" type="button" class="c-muted hoverable -mr-2 flex h-11 w-11 items-center justify-center transition">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto px-5 py-5">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="c-border rounded-2xl border p-4">
+            <p class="c-dim font-mono text-[10px] tracking-[0.2em]">STREAK</p>
+            <p class="mt-1.5 flex items-baseline gap-1.5">
+              <span id="statStreak" class="c-accent text-3xl font-bold tabular-nums">0</span>
+              <span class="c-dim font-mono text-[10px] tracking-[0.16em]">DAYS</span>
+            </p>
+          </div>
+          <div class="c-border rounded-2xl border p-4">
+            <p class="c-dim font-mono text-[10px] tracking-[0.2em]">COMPLETED</p>
+            <p class="mt-1.5 flex items-baseline gap-1.5">
+              <span id="statTotal" class="c-fg text-3xl font-bold tabular-nums">0</span>
+              <span class="c-dim font-mono text-[10px] tracking-[0.16em]">TOTAL</span>
+            </p>
+          </div>
+        </div>
+
+        <p class="c-dim mt-6 font-mono text-[10px] tracking-[0.2em]">LAST 14 DAYS</p>
+        <div id="historyRows" class="mt-3 space-y-1"></div>
+
+        <div id="legend" class="c-dim c-border mt-5 flex flex-wrap gap-x-3 gap-y-1 border-t pt-4 font-mono text-[9px] tracking-[0.14em]"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div id="toast" class="pointer-events-none fixed inset-x-0 z-40 hidden justify-center px-5"
+     style="bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px))">
+  <div class="c-accent c-accent-soft fade-up rounded-full px-4 py-2 font-mono text-[11px] tracking-[0.16em] backdrop-blur"
+       style="box-shadow: inset 0 0 0 1px var(--accent)">
+    <span id="toastText">LOGGED</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ════════════════════════════════════════════════════════
+     1. ROUTINE DEFINITION
+     ════════════════════════════════════════════════════════ */
+
+  var TASKS = [
+    { key: 'PIANO',   min: 120 },
+    { key: 'ENGLISH', min: 30  },
+    { key: 'CHINESE', min: 30  },
+    { key: 'SPANISH', min: 30  },
+    { key: 'FRENCH',  min: 30  },
+    { key: 'WORKOUT', min: 60  }
+  ];
+
+  var WEEKDAY_START = 19 * 3600 + 30 * 60; // 19:30 JST (Mon-Fri)
+  var WEEKEND_START = 20 * 3600;           // 20:00 JST (Sat-Sun)
+  var PROMPT_MS     = 15000;               // 15s completion tap window
+  var SCRUB_HOLD_MS = 4000;                // auto-return to live after scrubbing
+  var STORE_KEY     = 'night-routine.v1';
+  var TZ            = 'Asia/Tokyo';        // the routine is defined in JST
+
+  /* ════════════════════════════════════════════════════════
+     2. CLOCK (JST, derived from the real system clock)
+     ════════════════════════════════════════════════════════ */
+
+  var dtf;
+  try {
+    dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  } catch (e) { dtf = null; } // fall back to device-local time
+
+  function wallClock() {
+    var d = new Date();
+    if (!dtf) {
+      return { y: d.getFullYear(), mo: d.getMonth() + 1, d: d.getDate(),
+               h: d.getHours(), mi: d.getMinutes(), s: d.getSeconds() };
+    }
+    var parts = dtf.formatToParts(d), p = {};
+    for (var i = 0; i < parts.length; i++) p[parts[i].type] = parts[i].value;
+    var h = parseInt(p.hour, 10); if (h === 24) h = 0;
+    return { y: +p.year, mo: +p.month, d: +p.day, h: h, mi: +p.minute, s: +p.second };
+  }
+
+  function dayNumOf(y, mo, d) { return Math.round(Date.UTC(y, mo - 1, d) / 86400000); }
+  function dateKey(dn) { return new Date(dn * 86400000).toISOString().slice(0, 10); }
+
+  function absNow() {
+    var w = wallClock();
+    return dayNumOf(w.y, w.mo, w.d) * 86400 + w.h * 3600 + w.mi * 60 + w.s
+           + (Date.now() % 1000) / 1000; // sub-second smoothness for the bar
+  }
+
+  /* ════════════════════════════════════════════════════════
+     3. SCHEDULE
+     ════════════════════════════════════════════════════════ */
+
+  function scheduleFor(dn) {
+    var dow = new Date(dn * 86400000).getUTCDay();      // 0 = Sun, 6 = Sat
+    var weekend = (dow === 0 || dow === 6);
+    var cursor = dn * 86400 + (weekend ? WEEKEND_START : WEEKDAY_START);
+    var list = [];
+    for (var i = 0; i < TASKS.length; i++) {
+      var dur = TASKS[i].min * 60;
+      list.push({ key: TASKS[i].key, index: i, dur: dur, start: cursor, end: cursor + dur });
+      cursor += dur;
+    }
+    return {
+      dayNum: dn, key: dateKey(dn), weekend: weekend, tasks: list,
+      start: list[0].start, end: list[list.length - 1].end
+    };
+  }
+
+  // Which routine is running (or coming up)? A routine started yesterday
+  // can still be running past midnight, so yesterday is checked first.
+  function resolve(now) {
+    var w = wallClock();
+    var today = dayNumOf(w.y, w.mo, w.d);
+    var dn, sch, i;
+    for (dn = today - 1; dn <= today; dn++) {
+      sch = scheduleFor(dn);
+      if (now >= sch.start && now < sch.end) {
+        for (i = 0; i < sch.tasks.length; i++) {
+          if (now >= sch.tasks[i].start && now < sch.tasks[i].end) {
+            return { mode: 'active', sch: sch, task: sch.tasks[i] };
+          }
+        }
+      }
+    }
+    for (dn = today; dn <= today + 1; dn++) {
+      sch = scheduleFor(dn);
+      if (now < sch.start) return { mode: 'idle', sch: sch, task: sch.tasks[0] };
+    }
+    return { mode: 'idle', sch: scheduleFor(today + 1), task: scheduleFor(today + 1).tasks[0] };
+  }
+
+  /* ════════════════════════════════════════════════════════
+     4. FORMATTING
+     ════════════════════════════════════════════════════════ */
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function fmtDur(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return h > 0 ? h + ':' + pad(m) + ':' + pad(s) : m + ':' + pad(s);
+  }
+
+  function fmtHHMM(abs) {
+    var s = ((Math.round(abs) % 86400) + 86400) % 86400;
+    return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60));
+  }
+
+  function fmtMMDD(dn) {
+    var d = new Date(dn * 86400000);
+    return pad(d.getUTCMonth() + 1) + '/' + pad(d.getUTCDate());
+  }
+
+  /* ════════════════════════════════════════════════════════
+     5. FIFTY THEMES
+     Each task of each day gets the next look in the rotation,
+     so the routine never shows the same face two slots running.
+     ════════════════════════════════════════════════════════ */
+
+  var BARS   = ['solid', 'gradient', 'glow', 'striped', 'segmented', 'dual', 'ghost', 'thick', 'thin', 'notch'];
+  var THUMBS = ['circle', 'ring', 'square', 'diamond', 'bar', 'soft'];
+  var ATMOS  = ['plain', 'grid', 'dots', 'vignette', 'aurora', 'scanlines', 'diagonal', 'topglow'];
+  var TITLES = ['black', 'wide', 'outline', 'mono', 'light', 'tight', 'accent'];
+
+  // name, hue, saturation  — background/ink/track are derived so every
+  // theme stays legible and stays in the dark-minimal family.
+  var PALETTE = [
+    ['MIDNIGHT EMERALD', 160, 84], ['ARCTIC SIGNAL',   199, 89], ['EMBER FORGE',     24, 92],
+    ['ROSE NOIR',        349, 85], ['VIOLET HOUR',     258, 85], ['CITRUS PULSE',    48, 95],
+    ['CYAN GRID',        187, 90], ['BLOOD MOON',        0, 80], ['JADE TEMPLE',    152, 62],
+    ['GOLD LEAF',         43, 90], ['DEEP OCEAN',      210, 82], ['NEON ORCHID',    300, 80],
+    ['FOREST INK',       140, 55], ['COPPER DUSK',      18, 72], ['ICE FIELD',      195, 48],
+    ['ULTRAMARINE',      226, 85], ['MAGENTA DRIFT',   320, 82], ['LIME CIRCUIT',    82, 80],
+    ['AMBER STUDY',       38, 88], ['TEAL MONK',       175, 70], ['INDIGO NIGHT',   240, 72],
+    ['CORAL REEF',         8, 85], ['SEAFOAM',         165, 56], ['PLUM VELVET',    285, 62],
+    ['SAFFRON',           33, 90], ['GLACIER',         205, 60], ['PINE SMOKE',     145, 36],
+    ['CHERRY INK',       340, 76], ['SKY WIRE',        202, 95], ['MOSS STONE',     100, 42],
+    ['ROYAL VIOLET',     265, 75], ['SUNSET STRIP',     14, 88], ['AQUA LAMP',      183, 85],
+    ['BRONZE AGE',        30, 56], ['ELECTRIC BLUE',   218, 95], ['FUCHSIA BURN',   330, 88],
+    ['OLIVE NIGHT',       70, 46], ['PERIWINKLE',      245, 62], ['MANDARIN',        28, 95],
+    ['SPRUCE',           168, 46], ['LAVENDER ASH',    275, 46], ['FLAME CORE',      12, 95],
+    ['TURQUOISE',        172, 80], ['BERRY WINE',      355, 60], ['CHARTREUSE',      75, 85],
+    ['STEEL BLUE',       212, 46], ['ORCHID MIST',     295, 52]
+  ];
+
+  function hsl(h, s, l, a) {
+    return 'hsl(' + h + ' ' + s + '% ' + l + '%' + (a === undefined ? '' : ' / ' + a) + ')';
+  }
+
+  // Relative luminance / WCAG contrast, used to tune each accent so that
+  // deep hues (blues, violets) stay as readable as the bright ones.
+  function lumOf(h, s, l) {
+    h /= 360; s /= 100; l /= 100;
+    var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    function ch(t) {
+      t = (t + 1) % 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 0.5) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    }
+    var rgb = s === 0 ? [l, l, l] : [ch(h + 1 / 3), ch(h), ch(h - 1 / 3)];
+    for (var i = 0; i < 3; i++) {
+      rgb[i] = rgb[i] <= 0.03928 ? rgb[i] / 12.92 : Math.pow((rgb[i] + 0.055) / 1.055, 2.4);
+    }
+    return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  }
+  function contrast(a, b) {
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  }
+  // Lowest lightness for this hue that still clears `min` against the background.
+  function liftTo(h, s, bgLum, from, min) {
+    for (var l = from; l <= 80; l += 2) {
+      if (contrast(lumOf(h, s, l), bgLum) >= min) return l;
+    }
+    return 80;
+  }
+
+  function derive(name, h, s) {
+    var h2 = (h + 38) % 360, s2 = Math.min(s + 6, 96);
+    var bgL = 3.5, bgLum = lumOf(h, Math.min(s, 50), bgL);
+    var aL  = liftTo(h,  s,  bgLum, 56, 4.5);
+    var a2L = liftTo(h2, s2, bgLum, 62, 4.5);
+    var aLum = lumOf(h, s, aL);
+    return {
+      name: name,
+      bg:       hsl(h, Math.min(s, 50), bgL),
+      surface:  hsl(h, Math.min(s, 38), 7),
+      border:   hsl(h, Math.min(s, 28), 15),
+      track:    hsl(h, Math.min(s, 24), 20),
+      fg:       hsl(h, 18, 97),
+      muted:    hsl(h, 12, 60),
+      dim:      hsl(h, 12, 42),
+      accent:   hsl(h, s, aL),
+      accent2:  hsl(h2, s2, a2L),
+      glow:     hsl(h, s, 48, '.18'),
+      glow2:    hsl(h2, s2, 48, '.12'),
+      line:     hsl(h, Math.min(s, 45), 55, '.10'),
+      // Ink on top of the accent: whichever of dark/white reads better on it.
+      onAccent: contrast(aLum, lumOf(h, 60, 5)) >= contrast(aLum, 1) ? hsl(h, 60, 5) : '#ffffff',
+      backdrop: 'rgba(0,0,0,.82)'
+    };
+  }
+
+  var THEMES = [];
+  for (var pi = 0; pi < PALETTE.length; pi++) {
+    THEMES.push(derive(PALETTE[pi][0], PALETTE[pi][1], PALETTE[pi][2]));
+  }
+
+  // Three hand-built outliers so the rotation has real surprises in it.
+  THEMES.push({
+    name: 'PURE MONO', bg: '#050505', surface: '#0c0c0c', border: '#1f1f1f', track: '#2a2a2a',
+    fg: '#ffffff', muted: '#8a8a8a', dim: '#606060', accent: '#ffffff', accent2: '#c4c4c4',
+    glow: 'rgba(255,255,255,.16)', glow2: 'rgba(255,255,255,.08)', line: 'rgba(255,255,255,.08)',
+    onAccent: '#050505', backdrop: 'rgba(0,0,0,.85)'
+  });
+  THEMES.push({
+    name: 'PHOSPHOR TERM', bg: '#010401', surface: '#03120a', border: '#0c3a22', track: '#0f4a2c',
+    fg: '#c9ffe3', muted: '#4fbf86', dim: '#2f9a68', accent: '#00ff88', accent2: '#7dffc0',
+    glow: 'rgba(0,255,136,.18)', glow2: 'rgba(125,255,192,.10)', line: 'rgba(0,255,136,.12)',
+    onAccent: '#001a0c', backdrop: 'rgba(0,0,0,.85)'
+  });
+  THEMES.push({
+    name: 'DAYLIGHT PAPER', bg: '#f3f3ef', surface: '#ffffff', border: '#e2e2da', track: '#d6d6cc',
+    fg: '#0a0a0a', muted: '#55554d', dim: '#82827a', accent: '#0f766e', accent2: '#a14e07',
+    glow: 'rgba(15,118,110,.14)', glow2: 'rgba(180,83,9,.10)', line: 'rgba(0,0,0,.07)',
+    onAccent: '#ffffff', backdrop: 'rgba(40,40,36,.55)'
+  });
+
+  // Style traits cycle on coprime-ish periods, so combinations stay fresh.
+  for (var ti = 0; ti < THEMES.length; ti++) {
+    THEMES[ti].bar   = BARS[ti % BARS.length];
+    THEMES[ti].thumb = THUMBS[ti % THUMBS.length];
+    THEMES[ti].atmo  = ATMOS[ti % ATMOS.length];
+    THEMES[ti].title = TITLES[ti % TITLES.length];
+    THEMES[ti].pack  = ti % 10;
+  }
+
+  /* ════════════════════════════════════════════════════════
+     6. TEN SOUND PACKS (Web Audio API — all tones synthesized)
+     ════════════════════════════════════════════════════════ */
+
+  var PACKS = [
+    { name: 'GLASS',   wave: 'sine',     root: 523.25, decay: 0.70, gain: 0.16, oct: true  },
+    { name: 'MARIMBA', wave: 'triangle', root: 392.00, decay: 0.30, gain: 0.18, oct: false },
+    { name: 'ARCADE',  wave: 'square',   root: 440.00, decay: 0.14, gain: 0.07, oct: false },
+    { name: 'HARP',    wave: 'sine',     root: 659.25, decay: 0.95, gain: 0.14, oct: true  },
+    { name: 'DIGITAL', wave: 'triangle', root: 880.00, decay: 0.20, gain: 0.13, oct: false },
+    { name: 'DEEP',    wave: 'sine',     root: 261.63, decay: 1.10, gain: 0.20, oct: true  },
+    { name: 'CRYSTAL', wave: 'sine',     root: 1046.50, decay: 0.55, gain: 0.12, oct: false },
+    { name: 'PLUCK',   wave: 'sawtooth', root: 349.23, decay: 0.24, gain: 0.06, oct: false },
+    { name: 'ZEN',     wave: 'sine',     root: 432.00, decay: 1.50, gain: 0.15, oct: true, detune: 5 },
+    { name: 'NEON',    wave: 'square',   root: 587.33, decay: 0.26, gain: 0.06, oct: true  }
+  ];
+
+  var ctx = null, master = null, audioReady = false;
+
+  function audio() {
+    if (!ctx) {
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      try {
+        ctx = new Ctor();
+        master = ctx.createGain();
+        master.gain.value = 0.9;
+        master.connect(ctx.destination);
+      } catch (e) { ctx = null; return null; }
+    }
+    if (ctx.state === 'suspended' && ctx.resume) { try { ctx.resume(); } catch (e) {} }
+    return ctx;
+  }
+
+  function unlockAudio() {
+    var c = audio();
+    if (c) {
+      try { // silent blip inside the user gesture initializes + resumes the context
+        var o = c.createOscillator(), g = c.createGain();
+        g.gain.value = 0.0001; o.connect(g); g.connect(master);
+        o.start(); o.stop(c.currentTime + 0.02);
+      } catch (e) {}
+    }
+    audioReady = true;
+    window.removeEventListener('click', unlockAudio, true);
+    window.removeEventListener('touchstart', unlockAudio, true);
+    window.removeEventListener('keydown', unlockAudio, true);
+  }
+  window.addEventListener('click', unlockAudio, true);
+  window.addEventListener('touchstart', unlockAudio, true);
+  window.addEventListener('keydown', unlockAudio, true);
+
+  function tone(freq, delay, dur, wave, peak, detune) {
+    var c = audio(); if (!c) return;
+    var t0 = c.currentTime + delay;
+    var osc = c.createOscillator(), gain = c.createGain();
+    osc.type = wave || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    if (detune) osc.detune.setValueAtTime(detune, t0);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain); gain.connect(master);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  }
+
+  var currentPack = 0;
+  function pk() { return PACKS[currentPack]; }
+  function semi(root, n) { return root * Math.pow(2, n / 12); }
+
+  function note(n, delay, dur, gainScale) {
+    var p = pk();
+    var f = semi(p.root, n);
+    tone(f, delay, dur, p.wave, p.gain * (gainScale || 1), p.detune);
+    if (p.oct) tone(f * 2, delay, dur * 0.8, 'sine', p.gain * 0.28 * (gainScale || 1));
+  }
+
+  // Gentle ascending dual-frequency chime — a task just auto-started.
+  function chimeStart() {
+    var p = pk();
+    note(0, 0.00, p.decay * 1.1);
+    tone(semi(p.root, 7), 0.00, p.decay * 1.1, p.wave, p.gain * 0.5, p.detune);
+    note(4, 0.22, p.decay * 1.3);
+    tone(semi(p.root, 12), 0.22, p.decay * 1.3, p.wave, p.gain * 0.4, p.detune);
+  }
+
+  // Triangle-wave dual beep — exactly 60 seconds remain. Deliberately the
+  // same shape in every pack so the warning is always recognisable.
+  function alarmWarning() {
+    var f = semi(pk().root, 12);
+    tone(f, 0.00, 0.20, 'triangle', 0.22);
+    tone(f, 0.28, 0.20, 'triangle', 0.22);
+  }
+
+  // Ascending 4-tone celebration — the task hit 100%.
+  function chimeFinish() {
+    var p = pk(), d = Math.max(0.24, p.decay * 0.5);
+    note(0,  0.00, d);
+    note(4,  0.13, d);
+    note(7,  0.26, d * 1.1);
+    note(12, 0.42, p.decay * 1.5);
+  }
+
+  // Crisp major arpeggio — user tapped "mark completed".
+  function chimeAchievement() {
+    var p = pk(), d = Math.max(0.16, p.decay * 0.35);
+    note(4,  0.00, d);
+    note(8,  0.07, d);
+    note(11, 0.14, d * 1.1);
+    note(16, 0.22, p.decay * 1.2);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     7. STORAGE
+     ════════════════════════════════════════════════════════ */
+
+  function readStore() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      return raw ? (JSON.parse(raw) || {}) : {};
+    } catch (e) { return {}; }
+  }
+
+  var store = readStore();
+  var logs = (store && typeof store.logs === 'object' && store.logs) ? store.logs : {};
+  var themeShift = (store && typeof store.themeShift === 'number') ? store.themeShift : 0;
+
+  function persist() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ v: 1, logs: logs, themeShift: themeShift }));
+    } catch (e) {}
+  }
+
+  function syncFromStorage() {
+    var s = readStore();
+    if (s && typeof s.logs === 'object' && s.logs) logs = s.logs;
+    if (s && typeof s.themeShift === 'number') themeShift = s.themeShift;
+  }
+  window.addEventListener('storage', function (e) {
+    if (e.key === STORE_KEY) { syncFromStorage(); render(); }
+  });
+
+  function isDone(dayKey, taskKey) { return !!(logs[dayKey] && logs[dayKey][taskKey]); }
+
+  function markDone(dayKey, taskKey) {
+    if (!logs[dayKey]) logs[dayKey] = {};
+    logs[dayKey][taskKey] = true;
+    persist();
+  }
+
+  function doneCount(dayKey) {
+    var row = logs[dayKey], n = 0;
+    if (!row) return 0;
+    for (var i = 0; i < TASKS.length; i++) if (row[TASKS[i].key]) n++;
+    return n;
+  }
+
+  function totalCompleted() {
+    var n = 0;
+    for (var k in logs) if (Object.prototype.hasOwnProperty.call(logs, k)) n += doneCount(k);
+    return n;
+  }
+
+  // Consecutive days (ending today or yesterday) with at least one completed task.
+  function streakFrom(todayDn) {
+    var dn = todayDn;
+    if (doneCount(dateKey(dn)) === 0) dn -= 1; // today still in progress — don't break it
+    var n = 0;
+    while (doneCount(dateKey(dn)) > 0) { n++; dn--; if (n > 3650) break; }
+    return n;
+  }
+
+  /* ════════════════════════════════════════════════════════
+     8. DOM
+     ════════════════════════════════════════════════════════ */
+
+  function $(id) { return document.getElementById(id); }
+
+  var elDot = $('dot'), elClock = $('clock'), elStatus = $('status'), elTitle = $('title'),
+      elWindow = $('window'), elBadge = $('badge'), elBar = $('bar'), elFill = $('fill'),
+      elHoverFill = $('hoverfill'), elThumb = $('thumb'), elTip = $('tip'),
+      elElapsed = $('elapsed'), elRemaining = $('remaining'), elDuration = $('duration'),
+      elLiveBtn = $('liveBtn'), elPrompt = $('prompt'), elPromptBtn = $('promptBtn'),
+      elPromptTask = $('promptTask'), elPromptCount = $('promptCount'), elPromptBar = $('promptBar'),
+      elChapters = $('chapters'), elChapterLabels = $('chapterLabels'),
+      elSessionLabel = $('sessionLabel'), elSessionTime = $('sessionTime'), elHint = $('hint'),
+      elThemeBtn = $('themeBtn'), elThemeLabel = $('themeLabel'),
+      elModal = $('modal'), elBackdrop = $('backdrop'), elHistoryBtn = $('historyBtn'),
+      elCloseBtn = $('closeBtn'), elRows = $('historyRows'), elStreak = $('statStreak'),
+      elTotal = $('statTotal'), elLegend = $('legend'), elToast = $('toast'), elToastText = $('toastText');
+
+  var chapterEls = [], chapterFills = [];
+  (function buildChapters() {
+    for (var i = 0; i < TASKS.length; i++) {
+      var seg = document.createElement('div');
+      seg.className = 'chapter';
+      seg.style.flexGrow = String(TASKS[i].min); seg.style.flexBasis = '0';
+      var f = document.createElement('i'); f.style.width = '0%';
+      seg.appendChild(f); elChapters.appendChild(seg);
+      chapterEls.push(seg); chapterFills.push(f);
+
+      var lab = document.createElement('div');
+      lab.className = 'truncate text-center font-mono text-[9px] tracking-[0.12em]';
+      lab.style.flexGrow = String(TASKS[i].min); lab.style.flexBasis = '0';
+      lab.textContent = TASKS[i].key;
+      elChapterLabels.appendChild(lab);
+    }
+  })();
+
+  (function buildLegend() {
+    for (var i = 0; i < TASKS.length; i++) {
+      var s = document.createElement('span');
+      s.className = 'flex items-center gap-1';
+      s.innerHTML = '<span class="h-1.5 w-1.5 rounded-full" style="background:var(--dim)"></span>' + TASKS[i].key;
+      elLegend.appendChild(s);
+    }
+  })();
+
+  /* ════════════════════════════════════════════════════════
+     9. THEME APPLICATION
+     ════════════════════════════════════════════════════════ */
+
+  var appliedTheme = -1;
+
+  function applyTheme(idx, flash) {
+    if (idx === appliedTheme) return;
+    appliedTheme = idx;
+    var t = THEMES[idx], r = document.documentElement.style;
+    r.setProperty('--bg', t.bg);             r.setProperty('--surface', t.surface);
+    r.setProperty('--border', t.border);     r.setProperty('--track', t.track);
+    r.setProperty('--fg', t.fg);             r.setProperty('--muted', t.muted);
+    r.setProperty('--dim', t.dim);           r.setProperty('--accent', t.accent);
+    r.setProperty('--accent2', t.accent2);   r.setProperty('--glow', t.glow);
+    r.setProperty('--glow2', t.glow2);       r.setProperty('--line', t.line);
+    r.setProperty('--on-accent', t.onAccent); r.setProperty('--backdrop', t.backdrop);
+
+    var b = document.body;
+    b.setAttribute('data-bar', t.bar);
+    b.setAttribute('data-thumb', t.thumb);
+    b.setAttribute('data-atmo', t.atmo);
+    b.setAttribute('data-title', t.title);
+
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t.bg);
+
+    currentPack = t.pack;
+    elThemeLabel.textContent =
+      pad(idx + 1) + '/' + THEMES.length + '  ' + t.name + '  ·  ' + PACKS[t.pack].name;
+
+    if (flash) {
+      var fx = document.createElement('div');
+      fx.className = 'theme-flash';
+      document.body.appendChild(fx);
+      setTimeout(function () { if (fx.parentNode) fx.parentNode.removeChild(fx); }, 600);
+    }
+  }
+
+  function themeIndexFor(st) {
+    var slot = st.sch.dayNum * TASKS.length + (st.mode === 'active' ? st.task.index : 0);
+    var n = THEMES.length;
+    return ((slot + themeShift) % n + n) % n;
+  }
+
+  elThemeBtn.addEventListener('click', function () {
+    themeShift += 1;
+    persist();
+    var st = resolve(absNow());
+    applyTheme(themeIndexFor(st), true);
+    chimeAchievement();   // preview of the new pack
+    render();
+  });
+
+  /* ════════════════════════════════════════════════════════
+     10. SEEKBAR INTERACTION (mouse + touch)
+     ════════════════════════════════════════════════════════ */
+
+  var dragging = false, scrubRatio = null, scrubUntil = 0, hoverRatio = null,
+      canSeek = false, lastRatio = 0;
+
+  function ratioFromX(clientX) {
+    var r = elBar.getBoundingClientRect();
+    if (r.width <= 0) return 0;
+    return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+  }
+
+  function beginDrag(clientX) {
+    if (!canSeek) return;
+    dragging = true;
+    elBar.classList.add('dragging');
+    scrubRatio = ratioFromX(clientX); hoverRatio = scrubRatio;
+    render();
+  }
+  function moveDrag(clientX) {
+    if (!dragging) return;
+    scrubRatio = ratioFromX(clientX); hoverRatio = scrubRatio;
+    render();
+  }
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    elBar.classList.remove('dragging');
+    scrubUntil = Date.now() + SCRUB_HOLD_MS; // then snaps back to live
+    render();
+  }
+  function goLive() { scrubRatio = null; scrubUntil = 0; render(); }
+
+  elBar.addEventListener('mousedown', function (e) { e.preventDefault(); beginDrag(e.clientX); });
+  window.addEventListener('mousemove', function (e) { moveDrag(e.clientX); });
+  window.addEventListener('mouseup', endDrag);
+
+  elBar.addEventListener('mousemove', function (e) {
+    if (!canSeek || dragging) return;
+    hoverRatio = ratioFromX(e.clientX); render();
+  });
+  elBar.addEventListener('mouseleave', function () {
+    if (dragging) return;
+    hoverRatio = null; render();
+  });
+
+  elBar.addEventListener('touchstart', function (e) {
+    if (!canSeek || !e.touches.length) return;
+    beginDrag(e.touches[0].clientX);
+  }, { passive: true });
+  window.addEventListener('touchmove', function (e) {
+    if (!dragging || !e.touches.length) return;
+    e.preventDefault(); moveDrag(e.touches[0].clientX);
+  }, { passive: false });
+  window.addEventListener('touchend', endDrag);
+  window.addEventListener('touchcancel', endDrag);
+
+  elBar.addEventListener('keydown', function (e) {
+    if (!canSeek) return;
+    var step = e.shiftKey ? 0.1 : 0.02;
+    var base = scrubRatio === null ? lastRatio : scrubRatio;
+    if (e.key === 'ArrowRight') scrubRatio = Math.min(1, base + step);
+    else if (e.key === 'ArrowLeft') scrubRatio = Math.max(0, base - step);
+    else if (e.key === 'Home') scrubRatio = 0;
+    else if (e.key === 'End') scrubRatio = 1;
+    else return;
+    e.preventDefault();
+    scrubUntil = Date.now() + SCRUB_HOLD_MS;
+    render();
+  });
+
+  elLiveBtn.addEventListener('click', goLive);
+
+  /* ════════════════════════════════════════════════════════
+     11. COMPLETION PROMPT (15s tap window)
+     ════════════════════════════════════════════════════════ */
+
+  var pending = null; // { taskKey, dayKey, until }
+
+  function openPrompt(taskKey, dayKey) {
+    pending = { taskKey: taskKey, dayKey: dayKey, until: Date.now() + PROMPT_MS };
+    elPromptTask.textContent = taskKey;
+    elPrompt.classList.remove('hidden');
+    elPromptBtn.classList.remove('fade-up');
+    void elPromptBtn.offsetWidth;            // restart the entry animation
+    elPromptBtn.classList.add('fade-up');
+  }
+  function closePrompt() { pending = null; elPrompt.classList.add('hidden'); }
+
+  elPromptBtn.addEventListener('click', function () {
+    if (!pending) return;
+    markDone(pending.dayKey, pending.taskKey);
+    chimeAchievement();
+    showToast(pending.taskKey + '  ·  COMPLETED');
+    closePrompt();
+    render();
+  });
+
+  var toastTimer = null;
+  function showToast(text) {
+    elToastText.textContent = text;
+    elToast.classList.remove('hidden'); elToast.classList.add('flex');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      elToast.classList.add('hidden'); elToast.classList.remove('flex');
+    }, 3200);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     12. HISTORY MODAL
+     ════════════════════════════════════════════════════════ */
+
+  function renderHistory() {
+    var w = wallClock();
+    var today = dayNumOf(w.y, w.mo, w.d);
+    var st = resolve(absNow());
+    var refDay = st.mode === 'active' ? st.sch.dayNum : today;
+
+    elStreak.textContent = String(streakFrom(refDay));
+    elTotal.textContent = String(totalCompleted());
+
+    elRows.innerHTML = '';
+    for (var i = 0; i < 14; i++) {
+      var dn = refDay - i, key = dateKey(dn), n = doneCount(key);
+
+      var row = document.createElement('div');
+      row.className = 'flex items-center gap-3 rounded-xl px-2 py-2';
+      if (i === 0) row.style.background = 'var(--glow)';
+
+      var label = document.createElement('span');
+      label.className = 'w-12 shrink-0 font-mono text-[10px] tracking-[0.12em]';
+      label.style.color = i === 0 ? 'var(--fg)' : 'var(--dim)';
+      label.textContent = i === 0 ? 'TODAY' : fmtMMDD(dn);
+      row.appendChild(label);
+
+      var dots = document.createElement('span');
+      dots.className = 'flex flex-1 items-center gap-1.5';
+      for (var t = 0; t < TASKS.length; t++) {
+        var d = document.createElement('span');
+        var done = isDone(key, TASKS[t].key);
+        d.className = 'h-2 w-2 rounded-full';
+        d.style.background = done ? 'var(--accent)' : 'var(--border)';
+        d.title = TASKS[t].key + (done ? ' — completed' : ' — not logged');
+        dots.appendChild(d);
+      }
+      row.appendChild(dots);
+
+      var ratio = document.createElement('span');
+      ratio.className = 'shrink-0 font-mono text-[10px] tabular-nums';
+      ratio.style.color = n === TASKS.length ? 'var(--accent)' : n > 0 ? 'var(--muted)' : 'var(--dim)';
+      ratio.textContent = n + '/' + TASKS.length;
+      row.appendChild(ratio);
+
+      elRows.appendChild(row);
+    }
+  }
+
+  function openModal() {
+    syncFromStorage();
+    renderHistory();
+    elModal.classList.remove('hidden');
+    document.body.classList.add('no-scroll');
+  }
+  function closeModal() {
+    elModal.classList.add('hidden');
+    document.body.classList.remove('no-scroll');
+  }
+
+  elHistoryBtn.addEventListener('click', openModal);
+  elCloseBtn.addEventListener('click', closeModal);
+  elBackdrop.addEventListener('click', closeModal);
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !elModal.classList.contains('hidden')) closeModal();
+  });
+
+  /* ════════════════════════════════════════════════════════
+     13. RENDER LOOP
+     ════════════════════════════════════════════════════════ */
+
+  var lastTaskId = null, lastTaskRef = null, primed = false;
+  var warnId = null, warnPrevRem = Infinity, lastTitle = '';
+
+  function render() {
+    var now = absNow();
+    var w = wallClock();
+    var st = resolve(now);
+    var active = st.mode === 'active';
+    canSeek = active;
+
+    applyTheme(themeIndexFor(st), false);
+
+    /* ── header ── */
+    elClock.textContent = pad(w.h) + ':' + pad(w.mi) + ':' + pad(w.s);
+    elDot.className = 'block h-2.5 w-2.5 rounded-full' + (active ? ' live-dot' : '');
+    elDot.style.background = active ? 'var(--accent)' : 'var(--border)';
+
+    /* ── transitions: finish chime / start chime / prompt ── */
+    var taskId = active ? (st.sch.key + '#' + st.task.key) : null;
+    if (taskId !== lastTaskId) {
+      var finished = false;
+      if (primed && lastTaskRef && now >= lastTaskRef.end) {
+        chimeFinish();
+        openPrompt(lastTaskRef.taskKey, lastTaskRef.dayKey);
+        finished = true;
+      }
+      if (primed && active) {
+        if (finished) setTimeout(chimeStart, 1500); // let the finish chime breathe
+        else chimeStart();
+      }
+      lastTaskId = taskId;
+      lastTaskRef = active ? { taskKey: st.task.key, dayKey: st.sch.key, end: st.task.end } : null;
+      scrubRatio = null; scrubUntil = 0;
+    }
+    primed = true;
+
+    /* ── 1-minute warning (only after having seen >60s on this task) ── */
+    if (active) {
+      var remRaw = st.task.end - now;
+      if (taskId === warnId && warnPrevRem > 60 && remRaw <= 60) alarmWarning();
+      warnId = taskId; warnPrevRem = remRaw;
+    } else { warnId = null; warnPrevRem = Infinity; }
+
+    /* ── figures ── */
+    var dur = st.task.dur;
+    var liveElapsed = active ? Math.min(dur, Math.max(0, now - st.task.start)) : 0;
+    var liveRatio = dur > 0 ? liveElapsed / dur : 0;
+
+    var scrubbing = scrubRatio !== null && (dragging || Date.now() < scrubUntil);
+    if (!scrubbing && scrubRatio !== null) scrubRatio = null;
+
+    var ratio = scrubbing ? scrubRatio : liveRatio;
+    var elapsed = ratio * dur, remaining = dur - elapsed;
+    lastRatio = ratio;
+
+    /* ── status + title ── */
+    elStatus.textContent = active
+      ? 'NOW  ·  ' + (st.task.index + 1) + ' / ' + TASKS.length + '  ·  ' + (st.sch.weekend ? 'WEEKEND' : 'WEEKDAY')
+      : 'UP NEXT  ·  STARTS IN ' + fmtDur(st.sch.start - now) + '  ·  ' + (st.sch.weekend ? 'WEEKEND' : 'WEEKDAY');
+
+    if (lastTitle !== st.task.key) {
+      lastTitle = st.task.key;
+      elTitle.textContent = st.task.key;
+      elTitle.classList.remove('rise');
+      void elTitle.offsetWidth;              // restart the transition animation
+      elTitle.classList.add('rise');
+    }
+    elTitle.classList.toggle('dim', !active);
+
+    elWindow.textContent = fmtHHMM(st.task.start) + ' – ' + fmtHHMM(st.task.end);
+
+    if (isDone(st.sch.key, st.task.key)) {
+      elBadge.classList.remove('hidden'); elBadge.classList.add('inline-flex');
+    } else {
+      elBadge.classList.add('hidden'); elBadge.classList.remove('inline-flex');
+    }
+
+    /* ── seekbar ── */
+    var pct = (ratio * 100).toFixed(3) + '%';
+    elFill.style.width = pct;
+    elThumb.style.left = pct;
+    elBar.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+    elBar.setAttribute('aria-valuetext', fmtDur(elapsed) + ' elapsed, ' + fmtDur(remaining) + ' remaining');
+    elBar.setAttribute('data-locked', active ? '0' : '1');
+
+    if (hoverRatio !== null && active) {
+      elHoverFill.style.width = (hoverRatio * 100).toFixed(3) + '%';
+      elTip.style.left = (hoverRatio * 100).toFixed(3) + '%';
+      elTip.textContent = fmtDur(hoverRatio * dur);
+    } else {
+      elHoverFill.style.width = '0%';
+    }
+
+    elElapsed.textContent = fmtDur(elapsed);
+    elRemaining.textContent = '-' + fmtDur(remaining);
+    elDuration.textContent = fmtDur(dur);
+    elElapsed.style.color = scrubbing ? 'var(--accent)' : 'var(--fg)';
+    elRemaining.style.color = active ? 'var(--muted)' : 'var(--dim)';
+
+    if (scrubbing) { elLiveBtn.classList.remove('hidden'); elLiveBtn.classList.add('inline-flex'); }
+    else { elLiveBtn.classList.add('hidden'); elLiveBtn.classList.remove('inline-flex'); }
+
+    /* ── 15s prompt countdown ── */
+    if (pending) {
+      var left = pending.until - Date.now();
+      if (left <= 0) closePrompt();          // ignored — advance silently
+      else {
+        elPromptCount.textContent = Math.ceil(left / 1000) + 's';
+        elPromptBar.style.width = (left / PROMPT_MS * 100).toFixed(2) + '%';
+      }
+    }
+
+    /* ── session overview ── */
+    var sch = st.sch;
+    for (var i = 0; i < sch.tasks.length; i++) {
+      var t = sch.tasks[i], p = 0, state = 'upcoming';
+      if (now >= t.end) { p = 1; state = 'done'; }
+      else if (now >= t.start) { p = (now - t.start) / t.dur; state = 'current'; }
+      if (active && i === st.task.index && scrubbing) p = ratio;
+      chapterFills[i].style.width = (p * 100).toFixed(2) + '%';
+      chapterEls[i].setAttribute('data-state', state);
+      elChapterLabels.children[i].style.color =
+        state === 'current' ? 'var(--accent)' : state === 'done' ? 'var(--muted)' : 'var(--dim)';
+    }
+
+    var sessionDur = sch.end - sch.start;
+    var sessionElapsed = Math.min(sessionDur, Math.max(0, now - sch.start));
+    elSessionLabel.textContent = fmtHHMM(sch.start) + ' → ' + fmtHHMM(sch.end) +
+                                 '  ·  ' + doneCount(sch.key) + '/' + TASKS.length;
+    elSessionTime.textContent = fmtDur(sessionElapsed) + ' / -' + fmtDur(sessionDur - sessionElapsed);
+
+    /* ── hint ── */
+    elHint.textContent = !audioReady ? 'TAP ANYWHERE TO ENABLE SOUND'
+      : active ? 'DRAG THE BAR TO PREVIEW · RETURNS TO LIVE'
+      : 'AUTOMATIC · NO START BUTTON';
+  }
+
+  /* ════════════════════════════════════════════════════════
+     14. START
+     ════════════════════════════════════════════════════════ */
+
+  render();
+  setInterval(render, 200);                  // smooth bar; the schedule itself is clock-driven
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
+  window.addEventListener('focus', render);
+})();
+</script>
+</body>
+</html>
