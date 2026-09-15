@@ -846,7 +846,29 @@ D('kaleidoscope-garden', 'Kaleidoscope Garden', 'radial',
   { type: 'hold', affordance: '万華鏡の中央', feedback: '複数の扇形レイヤーが正確な位置へ整列する' },
   'rosette',
   S('glass', [-12, 0, 12], [12, 0, 0], { s: 165, l: 150 }),
-  { elapsed: '素材と奥行きの定着した領域', current: '最も鮮明な扇形', remaining: '低コントラストのぼけ' })
+  { elapsed: '素材と奥行きの定着した領域', current: '最も鮮明な扇形', remaining: '低コントラストのぼけ' }),
+
+// ══ painting ═════════════════════════════════════════════════
+D('still-life-window', 'Window Still Life', 'painting',
+  {
+    seed: 20260915,
+    paint: {
+      canvas:    [38, 20, 79],   ground:    [28, 36, 60],
+      sketchInk: [22, 10, 26],
+      wall:      [64, 11, 42],   wallLight: [52, 24, 60],
+      table:     [22, 32, 22],
+      cloth:     [42, 15, 73],   clothShade:[218, 16, 50],
+      jug:       [16, 44, 44],   jugLight:  [26, 46, 63],
+      bowl:      [198, 13, 56],
+      fruitA:    [4, 60, 41],    fruitB:    [38, 64, 51],
+      shadow:    [250, 24, 17],  light:     [46, 42, 88]
+    }
+  },
+  P(30, 30, { a: 16, k: 32, mid: 50 }),
+  { type: 'trace', affordance: '右下の余白に署名を入れる', feedback: 'なぞった分だけ絵具が乗り、絵が自分のものになる' },
+  'signature',
+  S('wood', [-12, -5], [-12, -5, 0], { s: 180, l: 150 }),
+  { elapsed: '塗り上がった部分', current: '筆が置かれている場所', remaining: '下描きだけの生成り' })
 
 ];
 

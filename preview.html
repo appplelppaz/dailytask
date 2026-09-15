@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>制作過程プレビュー</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #08090b; color: #fff;
+    font-family: Inter, system-ui, 'Hiragino Sans', 'Noto Sans JP', sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #panel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 3;
+    padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, rgba(6,7,9,.92) 60%, rgba(6,7,9,0));
+  }
+  #stages { display: flex; gap: 3px; margin-bottom: 10px; }
+  #stages span {
+    flex: 1; text-align: center; font-size: 8.5px; letter-spacing: .06em;
+    padding: 5px 2px; border-radius: 6px; color: rgba(255,255,255,.28);
+    background: rgba(255,255,255,.04); transition: all .3s ease; white-space: nowrap;
+  }
+  #stages span[data-on] { color: #fff; background: rgba(255,255,255,.16); }
+  #row { display: flex; align-items: center; gap: 12px; }
+  #play {
+    width: 46px; height: 46px; flex: none; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.2); background: none; color: #fff;
+    font-size: 15px; cursor: pointer;
+  }
+  input[type=range] { flex: 1; accent-color: #fff; height: 30px; }
+  #pct { width: 44px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.6); }
+  #label { margin: 8px 0 0; font-size: 10.5px; letter-spacing: .1em; color: rgba(255,255,255,.4); }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="panel">
+  <div id="stages"></div>
+  <div id="row">
+    <button id="play" type="button" aria-label="再生">▶</button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="制作の進み">
+    <span id="pct">0%</span>
+  </div>
+  <p id="label">Window Still Life — 何もないキャンバスから完成まで</p>
+</div>
+
+<script type="module">
+import { Scene } from './src/scene.js';
+import { byId } from './src/designs.js';
+import { STAGES } from './src/painting.js';
+
+const design = byId('still-life-window');
+const scene = new Scene(document.getElementById('stage'));
+scene.setDesign(design, 'preview:still-life');
+scene.state.progress = 0;
+
+const stagesEl = document.getElementById('stages');
+const NAMES = { ground: '生地', sketch: '下描き', blockIn: '下塗り', modelling: '陰影', colour: '着彩', highlight: 'ハイライト', varnish: '仕上げ' };
+for (const [name] of STAGES) {
+  const s = document.createElement('span');
+  s.textContent = NAMES[name] || name;
+  s.dataset.name = name;
+  stagesEl.appendChild(s);
+}
+
+const scrub = document.getElementById('scrub');
+const pct = document.getElementById('pct');
+const play = document.getElementById('play');
+let playing = false, last = performance.now();
+
+function setProgress(v) {
+  scene.state.progress = Math.max(0, Math.min(1, v));
+  scrub.value = String(Math.round(scene.state.progress * 1000));
+  pct.textContent = Math.round(scene.state.progress * 100) + '%';
+  const p = scene.state.progress;
+  [...stagesEl.children].forEach((el, i) => {
+    const on = p >= STAGES[i][1] && (p < STAGES[i][2] || (i === STAGES.length - 1 && p >= 1));
+    if (on) el.dataset.on = '1'; else el.removeAttribute('data-on');
+  });
+  scene.state.canComplete = p >= 1;
+}
+
+scrub.addEventListener('input', () => { playing = false; play.textContent = '▶'; setProgress(+scrub.value / 1000); });
+play.addEventListener('click', () => {
+  playing = !playing;
+  play.textContent = playing ? '❚❚' : '▶';
+  if (playing && scene.state.progress >= 1) setProgress(0);
+});
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = (now - last) / 1000; last = now;
+  if (playing) {
+    setProgress(scene.state.progress + dt / 40);       // the whole sitting in forty seconds
+    if (scene.state.progress >= 1) { playing = false; play.textContent = '▶'; }
+  }
+  scene.frame(now);
+}
+setProgress(0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

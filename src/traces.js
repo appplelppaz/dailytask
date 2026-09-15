@@ -414,6 +414,34 @@ export const TRACES = {
     ctx.beginPath(); ctx.arc(x, y, s * 0.36, 0.72, -0.72); ctx.stroke();
   },
 
+  // the painter's mark in the corner — a signature, not a tick
+  signature(ctx, x, y, s, c, p) {
+    const pts = [
+      [-0.52, 0.10], [-0.40, -0.16], [-0.30, 0.12], [-0.18, -0.20],
+      [-0.06, 0.08], [0.06, -0.14], [0.18, 0.10], [0.30, -0.06],
+      [0.42, 0.06], [0.54, -0.02]
+    ];
+    ctx.strokeStyle = css(c[4], 0.9, 8);
+    ctx.lineWidth = 1.7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const lim = clamp(p) * (pts.length - 1);
+    for (let i = 0; i <= lim; i++) {
+      const q = pts[Math.min(pts.length - 1, Math.floor(i))];
+      const nx = x + q[0] * s, ny = y + q[1] * s;
+      i ? ctx.lineTo(nx, ny) : ctx.moveTo(nx, ny);
+    }
+    ctx.stroke();
+    // the underline a signature usually gets
+    const t2 = clamp((p - 0.6) / 0.4);
+    if (t2 > 0) {
+      ctx.strokeStyle = css(c[4], 0.5, 4); ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.5, y + s * 0.22);
+      ctx.lineTo(x - s * 0.5 + s * 1.04 * t2, y + s * 0.2);
+      ctx.stroke();
+    }
+  },
+
   foldFan(ctx, x, y, s, c, p) {
     for (let i = 0; i < 5; i++) {
       const t = clamp((p - i * 0.12) / 0.5); if (t <= 0) continue;
