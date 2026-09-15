@@ -4,6 +4,19 @@
 // past it.
 // ─────────────────────────────────────────────────────────────
 
+import { store } from './store.js';
+
+/** How far the whole routine may be nudged, in minutes. */
+export const OFFSET_MIN = -60;
+export const OFFSET_MAX = 120;
+export const OFFSET_STEP = 10;
+
+/** The nudge, in seconds — set in Settings, applied to every night. */
+export function startOffsetSec() {
+  const m = Math.round((store.prefs.startOffset | 0) / OFFSET_STEP) * OFFSET_STEP;
+  return Math.max(OFFSET_MIN, Math.min(OFFSET_MAX, m)) * 60;
+}
+
 export const TASKS = [
   { key: 'PIANO',   min: 120 },
   { key: 'ENGLISH', min: 30  },
@@ -45,10 +58,15 @@ export function absNow() {
   return dayNumOf(w.y, w.mo, w.d) * 86400 + w.h * 3600 + w.mi * 60 + w.s + (Date.now() % 1000) / 1000;
 }
 
+/** Wall-clock seconds at which a given day's routine begins. */
+export function startSecondsFor(weekend) {
+  return (weekend ? WEEKEND_START : WEEKDAY_START) + startOffsetSec();
+}
+
 export function scheduleFor(dn) {
   const dow = new Date(dn * 86400000).getUTCDay();
   const weekend = dow === 0 || dow === 6;
-  let cursor = dn * 86400 + (weekend ? WEEKEND_START : WEEKDAY_START);
+  let cursor = dn * 86400 + (weekend ? WEEKEND_START : WEEKDAY_START) + startOffsetSec();
   const tasks = TASKS.map((t, index) => {
     const dur = t.min * 60;
     const item = { key: t.key, index, dur, start: cursor, end: cursor + dur };

@@ -7,6 +7,11 @@ The schedule runs on the real system clock in JST — `PIANO` 2h, then `ENGLISH`
 19:30 on weekdays, 20:00 at weekends, crossing midnight. There is no start,
 pause or reset control.
 
+When a night has to begin late or early, Settings nudges the whole routine in
+ten-minute steps, from an hour earlier to two hours later. The tasks keep their
+lengths and order; only the hour they begin moves, and it stays moved until it
+is changed back.
+
 ## What is on screen
 
 No clock, no bar, no percentage, no remaining time. Each task gets one of a
@@ -35,7 +40,7 @@ what the archive collects.
     src/completion.js hold / drag / trace / join / anchor / fold, plus keyboard
     src/scene.js      canvas host, frame loop, affordance and trace drawing
     src/store.js      localStorage: completions, cue bookkeeping, preferences
-    src/history.js    the archive of marks
+    src/history.js    the record, as a month calendar
 
 Static files only — no build step. Serve the directory, or open `index.html`
 through any local web server.

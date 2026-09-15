@@ -62,19 +62,48 @@
   #affordance:active { cursor: grabbing; }
   #affordance:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: 4px; }
 
-  /* ── the archive: a wall of marks ── */
-  #archive { position: fixed; inset: 0; z-index: 10; }
-  #archBackdrop { position: absolute; inset: 0; background: rgba(3,4,6,.88); backdrop-filter: blur(6px); }
-  #archPanel {
+  /* ── sheets: Record and Settings ── */
+  .sheet { position: fixed; inset: 0; z-index: 10; }
+  .sheet-backdrop { position: absolute; inset: 0; background: rgba(3,4,6,.88); backdrop-filter: blur(6px); }
+  .sheet-panel {
     position: absolute; inset: auto 50% 0 auto; transform: translateX(50%);
     width: min(620px, 100%); max-height: 86vh; overflow: auto;
     background: #0a0c10; border: 1px solid rgba(255,255,255,.08);
     border-radius: 22px 22px 0 0; padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
   }
-  @media (min-width: 680px) { #archPanel { inset: 50% 50% auto auto; transform: translate(50%, -50%); border-radius: 22px; } }
-  #archHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  #archHead h2 { margin: 0; font-size: 11px; font-weight: 400; letter-spacing: .3em; color: rgba(255,255,255,.5); }
-  #archClose { width: 40px; height: 40px; background: none; border: 0; color: rgba(255,255,255,.45); cursor: pointer; }
+  @media (min-width: 680px) { .sheet-panel { inset: 50% 50% auto auto; transform: translate(50%, -50%); border-radius: 22px; } }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .sheet-head h2 { margin: 0; font-size: 11px; font-weight: 400; letter-spacing: .3em; color: rgba(255,255,255,.5); }
+  .sheet-close { width: 40px; height: 40px; background: none; border: 0; color: rgba(255,255,255,.45); cursor: pointer; }
+  .sheet-close:hover, .sheet-close:focus-visible { color: #fff; }
+
+  /* ── settings ── */
+  .set-label { margin: 0 0 12px; font-size: 11px; letter-spacing: .16em; color: rgba(255,255,255,.55); }
+  .set-stepper { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .set-stepper button {
+    width: 54px; height: 54px; flex: none; border-radius: 50%;
+    background: none; border: 1px solid rgba(255,255,255,.16); color: rgba(255,255,255,.8);
+    font-size: 20px; line-height: 1; cursor: pointer; transition: border-color .2s ease, color .2s ease;
+  }
+  .set-stepper button:hover:not(:disabled), .set-stepper button:focus-visible { border-color: rgba(255,255,255,.5); color: #fff; }
+  .set-stepper button:disabled { opacity: .25; cursor: default; }
+  #offsetValue {
+    flex: 1; text-align: center; font-size: 21px; font-weight: 300; letter-spacing: .04em;
+    color: #fff; font-variant-numeric: tabular-nums;
+  }
+  .set-times { display: flex; gap: 8px; margin: 18px 0 0; }
+  .set-times > div {
+    flex: 1; padding: 12px 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; text-align: center;
+  }
+  .set-times dt { font-size: 9.5px; letter-spacing: .14em; color: rgba(255,255,255,.35); }
+  .set-times dd { margin: 5px 0 0; font-size: 17px; font-weight: 300; color: #fff; font-variant-numeric: tabular-nums; }
+  .set-times dd small { font-size: 11px; color: rgba(255,255,255,.3); margin-right: 5px; text-decoration: line-through; }
+  .set-reset {
+    display: block; margin: 16px auto 0; padding: 9px 16px; min-height: 40px;
+    background: none; border: 0; color: rgba(255,255,255,.4); font-size: 11px; letter-spacing: .1em; cursor: pointer;
+  }
+  .set-reset:hover, .set-reset:focus-visible { color: #fff; }
+  .set-note { margin: 18px 2px 0; font-size: 9.5px; font-weight: 300; line-height: 1.8; color: rgba(255,255,255,.28); letter-spacing: .04em; }
   /* ── the record: a plain month calendar ── */
   .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .cal-title { font-size: 13px; font-weight: 400; letter-spacing: .1em; color: rgba(255,255,255,.85); }
@@ -143,6 +172,12 @@
         <path d="M4 7h10l-2.5-2.5M20 17H10l2.5 2.5"/><circle cx="18" cy="7" r="2"/><circle cx="6" cy="17" r="2"/>
       </svg>
     </button>
+    <button id="settingsBtn" type="button" aria-label="設定をひらく">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/>
+      </svg>
+    </button>
     <button id="archiveBtn" type="button" aria-label="記録をひらく">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/>
@@ -159,16 +194,44 @@
 
 <button id="affordance" type="button" hidden aria-label="タスクを完了としてマーク"></button>
 
-<div id="archive" hidden>
-  <div id="archBackdrop"></div>
-  <div id="archPanel" role="dialog" aria-modal="true" aria-label="記録">
-    <div id="archHead">
+<div id="archive" class="sheet" hidden>
+  <div id="archBackdrop" class="sheet-backdrop"></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="記録">
+    <div class="sheet-head">
       <h2>RECORD</h2>
-      <button id="archClose" type="button" aria-label="とじる">
+      <button id="archClose" class="sheet-close" type="button" aria-label="とじる">
         <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
       </button>
     </div>
     <div id="archRows"></div>
+  </div>
+</div>
+
+<div id="settings" class="sheet" hidden>
+  <div id="setBackdrop" class="sheet-backdrop"></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="設定">
+    <div class="sheet-head">
+      <h2>SETTINGS</h2>
+      <button id="setClose" class="sheet-close" type="button" aria-label="とじる">
+        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
+      </button>
+    </div>
+
+    <p class="set-label">開始時間</p>
+    <div class="set-stepper">
+      <button id="offsetDown" type="button" aria-label="開始を10分早める">−</button>
+      <span id="offsetValue" role="status" aria-live="polite">±0分</span>
+      <button id="offsetUp" type="button" aria-label="開始を10分遅らせる">＋</button>
+    </div>
+
+    <dl class="set-times">
+      <div><dt>平日</dt><dd id="wdTime">19:30</dd></div>
+      <div><dt>土日</dt><dd id="weTime">20:00</dd></div>
+    </dl>
+
+    <button id="offsetReset" class="set-reset" type="button" hidden>もとに戻す</button>
+
+    <p class="set-note">タスクの長さと順番はそのままに、その夜の開始時刻ごと前後へずらします。設定した分だけ毎晩ずれ続けるので、その日だけの調整なら翌日にもとへ戻してください。</p>
   </div>
 </div>
 

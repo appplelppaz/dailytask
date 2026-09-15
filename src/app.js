@@ -4,7 +4,7 @@
 // a number, and nothing here completes a task on its own.
 // ─────────────────────────────────────────────────────────────
 
-import { TASKS, resolve, absNow } from './schedule.js';
+import { TASKS, resolve, absNow, scheduleFor, wallClock, dayNumOf, startSecondsFor, OFFSET_MIN, OFFSET_MAX, OFFSET_STEP } from './schedule.js';
 import { DESIGNS } from './designs.js';
 import { store } from './store.js';
 import { audio } from './audio.js';
@@ -174,7 +174,61 @@ function closeArchive() { archiveEl.hidden = true; archiveBtn.focus(); }
 archiveBtn.addEventListener('click', openArchive);
 el('archClose').addEventListener('click', closeArchive);
 el('archBackdrop').addEventListener('click', closeArchive);
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && !archiveEl.hidden) closeArchive(); });
+addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!archiveEl.hidden) closeArchive();
+  else if (!el('settings').hidden) closeSettings();
+});
+
+// ── settings: nudging when the night begins ──────────────────
+const settingsEl = el('settings');
+const offsetValue = el('offsetValue');
+const offsetUp = el('offsetUp');
+const offsetDown = el('offsetDown');
+const offsetReset = el('offsetReset');
+
+const hhmm = (sec) => {
+  const s2 = ((Math.round(sec) % 86400) + 86400) % 86400;
+  const h = Math.floor(s2 / 3600), m = Math.floor((s2 % 3600) / 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+function renderSettings() {
+  const off = store.prefs.startOffset | 0;
+  offsetValue.textContent = off === 0 ? '±0分' : (off > 0 ? `+${off}分` : `−${Math.abs(off)}分`);
+  offsetUp.disabled = off >= OFFSET_MAX;
+  offsetDown.disabled = off <= OFFSET_MIN;
+  offsetReset.hidden = off === 0;
+
+  // show where each night actually starts now, against where it used to
+  for (const [id, weekend, base] of [['wdTime', false, '19:30'], ['weTime', true, '20:00']]) {
+    const now = hhmm(startSecondsFor(weekend));
+    el(id).innerHTML = off === 0 ? now : `<small>${base}</small>${now}`;
+  }
+}
+
+function setOffset(next) {
+  const clamped = Math.max(OFFSET_MIN, Math.min(OFFSET_MAX, next));
+  store.setPref('startOffset', clamped);
+  renderSettings();
+  tick();                                  // the night re-times itself at once
+}
+
+offsetUp.addEventListener('click', () => setOffset((store.prefs.startOffset | 0) + OFFSET_STEP));
+offsetDown.addEventListener('click', () => setOffset((store.prefs.startOffset | 0) - OFFSET_STEP));
+offsetReset.addEventListener('click', () => setOffset(0));
+
+function openSettings() {
+  store.sync();
+  renderSettings();
+  settingsEl.hidden = false;
+  el('setClose').focus();
+}
+function closeSettings() { settingsEl.hidden = true; el('settingsBtn').focus(); }
+el('settingsBtn').addEventListener('click', openSettings);
+el('setClose').addEventListener('click', closeSettings);
+el('setBackdrop').addEventListener('click', closeSettings);
+renderSettings();
 
 // ── a quiet way to meet a different world ────────────────────
 el('shiftBtn').addEventListener('click', () => {
@@ -186,3 +240,4 @@ el('shiftBtn').addEventListener('click', () => {
 
 // exposed for the smoke tests
 window.__app = { scene, control, tick, DESIGNS, store };
+window.__sched = { scheduleFor, wallClock, dayNumOf, resolve };

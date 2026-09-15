@@ -13,7 +13,7 @@ function read() {
 let data = read();
 if (!data.logs) data.logs = {};      // { 'YYYY-MM-DD': { TASK: { design, at } } }
 if (!data.cues) data.cues = {};      // { '<sessionId>': { start: 1, last: 1 } }
-if (!data.prefs) data.prefs = { sound: true, volume: 0.8, shift: 0 };
+if (!data.prefs) data.prefs = { sound: true, volume: 0.8, shift: 0, startOffset: 0 };
 
 function write() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* private mode */ }
@@ -23,7 +23,7 @@ export const store = {
   get logs() { return data.logs; },
   get prefs() { return data.prefs; },
 
-  sync() { data = { ...read(), ...{} }; if (!data.logs) data.logs = {}; if (!data.cues) data.cues = {}; if (!data.prefs) data.prefs = { sound: true, volume: 0.8, shift: 0 }; },
+  sync() { data = { ...read(), ...{} }; if (!data.logs) data.logs = {}; if (!data.cues) data.cues = {}; if (!data.prefs) data.prefs = { sound: true, volume: 0.8, shift: 0, startOffset: 0 }; },
 
   isComplete(day, task) { return !!(data.logs[day] && data.logs[day][task]); },
   entry(day, task) { return (data.logs[day] || {})[task] || null; },
