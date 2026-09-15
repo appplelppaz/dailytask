@@ -31,7 +31,11 @@
   }
   input[type=range] { flex: 1; accent-color: #fff; height: 30px; }
   #pct { width: 44px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.6); }
-  #label { margin: 8px 0 0; font-size: 10.5px; letter-spacing: .1em; color: rgba(255,255,255,.4); }
+  #works { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  #works button { width: 34px; height: 34px; flex: none; background: none; border: 0; color: rgba(255,255,255,.5); font-size: 16px; cursor: pointer; }
+  #works button:hover { color: #fff; }
+  #label { flex: 1; margin: 0; font-size: 10.5px; letter-spacing: .08em; color: rgba(255,255,255,.55); }
+  #work { font-size: 10px; color: rgba(255,255,255,.3); font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -43,18 +47,34 @@
     <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="制作の進み">
     <span id="pct">0%</span>
   </div>
-  <p id="label">Window Still Life — 何もないキャンバスから完成まで</p>
+  <div id="works">
+    <button id="prev" type="button" aria-label="前の作品">‹</button>
+    <p id="label">—</p>
+    <span id="work"></span>
+    <button id="next" type="button" aria-label="次の作品">›</button>
+  </div>
 </div>
 
 <script type="module">
 import { Scene } from './src/scene.js';
-import { byId } from './src/designs.js';
+import { DESIGNS } from './src/designs.js';
 import { STAGES } from './src/painting.js';
+import { SUBJECTS } from './src/paintings/index.js';
 
-const design = byId('still-life-window');
+const works = DESIGNS.filter((d) => d.engine === 'painting');
+let which = 0;
 const scene = new Scene(document.getElementById('stage'));
-scene.setDesign(design, 'preview:still-life');
-scene.state.progress = 0;
+
+function load(i) {
+  which = (i + works.length) % works.length;
+  const d = works[which];
+  scene.setDesign(d, 'preview:' + d.id);
+  scene.completedAt = 0;
+  const subj = SUBJECTS[d.prm.subject];
+  document.getElementById('label').textContent =
+    subj.artist ? `${subj.title} — ${subj.artist}, ${subj.year}` : subj.title;
+  document.getElementById('work').textContent = `${which + 1} / ${works.length}`;
+}
 
 const stagesEl = document.getElementById('stages');
 const NAMES = { ground: '生地', sketch: '下描き', blockIn: '下塗り', modelling: '陰影', colour: '着彩', highlight: 'ハイライト', varnish: '仕上げ' };
@@ -98,6 +118,10 @@ function frame(now) {
   }
   scene.frame(now);
 }
+document.getElementById('prev').addEventListener('click', () => { load(which - 1); setProgress(scene.state.progress); });
+document.getElementById('next').addEventListener('click', () => { load(which + 1); setProgress(scene.state.progress); });
+
+load(0);
 setProgress(0);
 requestAnimationFrame(frame);
 </script>
