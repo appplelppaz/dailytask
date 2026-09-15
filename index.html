@@ -44,6 +44,7 @@
   }
   #taskName[data-state="dormant"] { opacity: .38; }
   #taskName[data-state="closing"] { color: rgba(255,255,255,.95); }
+  #taskName[data-state="paused"] { opacity: .5; letter-spacing: .5em; }
   #worldName {
     margin: 7px 0 0; font-size: 11px; font-weight: 300; letter-spacing: .22em;
     color: rgba(255,255,255,.26); text-transform: uppercase;
@@ -142,7 +143,7 @@
 </head>
 <body>
 
-<canvas id="stage"></canvas>
+<canvas id="stage" tabindex="0" role="button" aria-pressed="false" aria-label="タスクの進行を一時停止"></canvas>
 
 <div id="ui">
   <div id="corner">
@@ -218,7 +219,7 @@
 
     <button id="offsetReset" class="set-reset" type="button" hidden>もとに戻す</button>
 
-    <p class="set-note">タスクの長さと順番はそのままに、その夜の開始時刻ごと前後へずらします。設定した分だけ毎晩ずれ続けるので、その日だけの調整なら翌日にもとへ戻してください。</p>
+    <p class="set-note">タスクの長さと順番はそのままに、その夜の開始時刻ごと前後へずらします。今夜だけの調整です — 翌日はデフォルト（平日19:30／土日20:00）に戻ります。<br>画面をタップすると進行を一時停止、もう一度タップで再開します。止めた分だけ、あとのタスクの開始も後ろへずれます。</p>
   </div>
 </div>
 

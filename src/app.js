@@ -4,7 +4,11 @@
 // a number, and nothing here completes a task on its own.
 // ─────────────────────────────────────────────────────────────
 
-import { TASKS, resolve, absNow, scheduleFor, wallClock, dayNumOf, startSecondsFor, OFFSET_MIN, OFFSET_MAX, OFFSET_STEP } from './schedule.js';
+import {
+  TASKS, resolve, absNow, effectiveNow, scheduleFor, wallClock, dayNumOf,
+  nightKey, nightDayNum, startSecondsFor, startOffsetMin, isPaused, pausedSec,
+  OFFSET_MIN, OFFSET_MAX, OFFSET_STEP
+} from './schedule.js';
 import { DESIGNS } from './designs.js';
 import { store } from './store.js';
 import { audio } from './audio.js';
@@ -52,7 +56,7 @@ const control = new CompletionControl(affordanceEl, () => {
 let current = null;
 
 function tick() {
-  const now = absNow();
+  const now = effectiveNow();      // real time, less whatever was spent paused
   const st = resolve(now);
   const design = designFor(st.sch, st.task);
   const sessionId = `${st.sch.key}:${st.task.key}`;
@@ -101,19 +105,26 @@ function tick() {
   scene.state.canComplete = !!pending && !completed;
   if (completed) scene.markCompleted();
 
+  const paused = isPaused();
+  scene.setPaused(paused);
+
   taskNameEl.textContent = show.task.key;
-  taskNameEl.dataset.state = pending ? 'closing' : active ? 'live' : 'dormant';
+  taskNameEl.dataset.state = paused ? 'paused' : pending ? 'closing' : active ? 'live' : 'dormant';
   worldNameEl.textContent = show.design.name;
 
-  // one line of guidance, only when there is something to do
+  // one line of guidance, only when there is something to say
   if (scene.state.canComplete) {
     hintEl.textContent = show.design.completion.affordance;
     affordanceEl.setAttribute('aria-description', show.design.completion.affordance);
-  } else if (completed && pending === null && !active) {
-    hintEl.textContent = '';
+  } else if (paused) {
+    hintEl.textContent = '一時停止中 — もう一度タップで再開';
   } else {
     hintEl.textContent = '';
   }
+  stage.setAttribute('aria-label', paused
+    ? 'タスクの進行は一時停止中。もう一度押すと再開します'
+    : 'タスクの進行を一時停止');
+  stage.setAttribute('aria-pressed', String(paused));
 
   control.setSpec(scene.affordanceSpec());
   primed = true;
@@ -141,6 +152,43 @@ setInterval(tick, 500);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { store.sync(); tick(); } });
 addEventListener('focus', tick);
 
+// ── pause: a tap on the world holds the night still ──────────
+function setPaused(next) {
+  const p = store.prefs.pause;
+  const mine = p && p.day === nightKey() ? p : { day: nightKey(), accum: 0, since: null };
+  if (next && !mine.since) {
+    mine.since = Date.now();
+  } else if (!next && mine.since) {
+    mine.accum = (mine.accum || 0) + Math.max(0, (Date.now() - mine.since) / 1000);
+    mine.since = null;
+  } else return;
+  store.setPref('pause', mine);
+  tick();
+}
+
+function togglePause() {
+  // nothing to hold still before the night starts, or once a task is waiting
+  // to be closed by hand
+  if (!current || !current.active || scene.state.canComplete) return;
+  setPaused(!isPaused());
+}
+
+let tapAt = null;
+stage.addEventListener('pointerdown', (e) => { tapAt = { x: e.clientX, y: e.clientY, t: Date.now() }; });
+stage.addEventListener('pointerup', (e) => {
+  if (!tapAt) return;
+  const moved = Math.hypot(e.clientX - tapAt.x, e.clientY - tapAt.y);
+  const held = Date.now() - tapAt.t;
+  tapAt = null;
+  if (moved < 12 && held < 600) togglePause();     // a tap, not a drag or a rest
+});
+stage.addEventListener('pointercancel', () => { tapAt = null; });
+stage.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+  e.preventDefault();
+  togglePause();
+});
+
 // ── audio unlock: first touch anywhere in the page ───────────
 function unlock() {
   audio.unlock();
@@ -165,8 +213,7 @@ soundBtn.addEventListener('click', () => {
 const archiveBtn = el('archiveBtn');
 function openArchive() {
   store.sync();
-  const st = resolve();
-  renderArchive(el('archRows'), st.sch.dayNum);
+  renderArchive(el('archRows'), nightDayNum());
   archiveEl.hidden = false;
   el('archClose').focus();
 }
@@ -194,7 +241,7 @@ const hhmm = (sec) => {
 };
 
 function renderSettings() {
-  const off = store.prefs.startOffset | 0;
+  const off = startOffsetMin();
   offsetValue.textContent = off === 0 ? '±0分' : (off > 0 ? `+${off}分` : `−${Math.abs(off)}分`);
   offsetUp.disabled = off >= OFFSET_MAX;
   offsetDown.disabled = off <= OFFSET_MIN;
@@ -210,12 +257,13 @@ function renderSettings() {
 function setOffset(next) {
   const clamped = Math.max(OFFSET_MIN, Math.min(OFFSET_MAX, next));
   store.setPref('startOffset', clamped);
+  store.setPref('startOffsetDay', nightKey());     // tomorrow starts from the default again
   renderSettings();
   tick();                                  // the night re-times itself at once
 }
 
-offsetUp.addEventListener('click', () => setOffset((store.prefs.startOffset | 0) + OFFSET_STEP));
-offsetDown.addEventListener('click', () => setOffset((store.prefs.startOffset | 0) - OFFSET_STEP));
+offsetUp.addEventListener('click', () => setOffset(startOffsetMin() + OFFSET_STEP));
+offsetDown.addEventListener('click', () => setOffset(startOffsetMin() - OFFSET_STEP));
 offsetReset.addEventListener('click', () => setOffset(0));
 
 function openSettings() {
@@ -240,4 +288,4 @@ el('shiftBtn').addEventListener('click', () => {
 
 // exposed for the smoke tests
 window.__app = { scene, control, tick, DESIGNS, store };
-window.__sched = { scheduleFor, wallClock, dayNumOf, resolve };
+window.__sched = { scheduleFor, wallClock, dayNumOf, resolve, effectiveNow, isPaused, pausedSec, nightKey, startOffsetMin };

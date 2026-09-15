@@ -6,16 +6,10 @@
 
 import { store } from './store.js';
 
-/** How far the whole routine may be nudged, in minutes. */
+/** How far tonight may be nudged, in minutes. */
 export const OFFSET_MIN = -60;
 export const OFFSET_MAX = 120;
 export const OFFSET_STEP = 10;
-
-/** The nudge, in seconds — set in Settings, applied to every night. */
-export function startOffsetSec() {
-  const m = Math.round((store.prefs.startOffset | 0) / OFFSET_STEP) * OFFSET_STEP;
-  return Math.max(OFFSET_MIN, Math.min(OFFSET_MAX, m)) * 60;
-}
 
 export const TASKS = [
   { key: 'PIANO',   min: 120 },
@@ -53,6 +47,46 @@ export function wallClock() {
 export const dayNumOf = (y, mo, d) => Math.round(Date.UTC(y, mo - 1, d) / 86400000);
 export const dateKey = (dn) => new Date(dn * 86400000).toISOString().slice(0, 10);
 
+/**
+ * Which night we are in, by the real clock. Before noon still counts as the
+ * night before, so a routine that ran past midnight keeps its own day — and
+ * so do the two things scoped to a single night: the start nudge and the
+ * pause. Both fall away on their own once a new night begins.
+ */
+export function nightDayNum() {
+  const w = wallClock();
+  return dayNumOf(w.y, w.mo, w.d) - (w.h < 12 ? 1 : 0);
+}
+export const nightKey = () => dateKey(nightDayNum());
+
+/** The nudge for tonight, in minutes. Zero once tonight is over. */
+export function startOffsetMin() {
+  if (store.prefs.startOffsetDay !== nightKey()) return 0;
+  const m = Math.round((store.prefs.startOffset | 0) / OFFSET_STEP) * OFFSET_STEP;
+  return Math.max(OFFSET_MIN, Math.min(OFFSET_MAX, m));
+}
+export const startOffsetSec = () => startOffsetMin() * 60;
+
+/** Seconds the person has held tonight still, including any pause running now. */
+export function pausedSec() {
+  const p = store.prefs.pause;
+  if (!p || p.day !== nightKey()) return 0;
+  const live = p.since ? Math.max(0, (Date.now() - p.since) / 1000) : 0;
+  return (p.accum || 0) + live;
+}
+
+export const isPaused = () => {
+  const p = store.prefs.pause;
+  return !!(p && p.day === nightKey() && p.since);
+};
+
+/**
+ * The clock the routine actually runs on: real time, minus everything spent
+ * paused. Holding the night still pushes this task — and every task after
+ * it — back by exactly that much.
+ */
+export const effectiveNow = () => absNow() - pausedSec();
+
 export function absNow() {
   const w = wallClock();
   return dayNumOf(w.y, w.mo, w.d) * 86400 + w.h * 3600 + w.mi * 60 + w.s + (Date.now() % 1000) / 1000;
@@ -76,9 +110,8 @@ export function scheduleFor(dn) {
   return { dayNum: dn, key: dateKey(dn), weekend, tasks, start: tasks[0].start, end: cursor };
 }
 
-export function resolve(now = absNow()) {
-  const w = wallClock();
-  const today = dayNumOf(w.y, w.mo, w.d);
+export function resolve(now = effectiveNow()) {
+  const today = Math.floor(now / 86400);
   for (let dn = today - 1; dn <= today; dn++) {
     const sch = scheduleFor(dn);
     if (now >= sch.start && now < sch.end) {

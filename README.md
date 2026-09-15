@@ -9,8 +9,13 @@ pause or reset control.
 
 When a night has to begin late or early, Settings nudges the whole routine in
 ten-minute steps, from an hour earlier to two hours later. The tasks keep their
-lengths and order; only the hour they begin moves, and it stays moved until it
-is changed back.
+lengths and order; only the hour they begin moves, and the nudge belongs to that
+night alone — the next one starts from the default again.
+
+A tap on the world holds the night still, and another lets it go. Everything
+after it moves back by exactly as long as it was held, so an interruption costs
+the routine its own length and nothing more. The hold survives the app being
+closed, and it too falls away with the night.
 
 ## What is on screen
 

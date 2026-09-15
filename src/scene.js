@@ -22,6 +22,7 @@ export class Scene {
       this.reduced = e.matches; this.rebuild();
     });
     this.t0 = performance.now();
+    this.pausedAt = 0;          // ambient movement stops while the night is held
     this.completedAt = 0;
     this.anchors = null;
     this.resize();
@@ -60,6 +61,12 @@ export class Scene {
     this.env.st = engine.init(this.env);
   }
 
+  /** Hold or release the world's own slow movement. */
+  setPaused(on) {
+    if (on && !this.pausedAt) this.pausedAt = performance.now();
+    else if (!on && this.pausedAt) { this.t0 += performance.now() - this.pausedAt; this.pausedAt = 0; }
+  }
+
   markCompleted(now = performance.now()) {
     if (!this.completedAt) this.completedAt = now;
   }
@@ -68,7 +75,7 @@ export class Scene {
     if (!this.engine || !this.w) return;
     const env = this.env;
     env.p = clamp(this.state.progress);
-    env.time = (now - this.t0) / 1000;
+    env.time = ((this.pausedAt || now) - this.t0) / 1000;
     env.reduced = this.reduced;
     env.w = this.w; env.h = this.h;
 
