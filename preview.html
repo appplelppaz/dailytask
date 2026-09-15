@@ -64,6 +64,7 @@ import { SUBJECTS } from './src/paintings/index.js';
 const works = DESIGNS.filter((d) => d.engine === 'painting');
 let which = 0;
 const scene = new Scene(document.getElementById('stage'));
+window.__preview = { scene };
 
 function load(i) {
   which = (i + works.length) % works.length;

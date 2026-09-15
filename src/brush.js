@@ -76,6 +76,11 @@ export const ellipsePts = (cx, cy, rx, ry, n = 44, from = 0, to = TAU) => {
 
 export function pathOf(ctx, pts) {
   ctx.beginPath();
+  poly(ctx, pts);
+}
+
+/** The same shape added to the path already being built, not replacing it. */
+export function poly(ctx, pts) {
   pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
   ctx.closePath();
 }
@@ -184,3 +189,70 @@ export function impasto(ctx, x, y, len, ang, wide, color, opts = {}) {
   ctx.strokeStyle = css([color[0], color[1] * 0.82, Math.min(97, color[2] + 15 * relief)], alpha * 0.8);
   lay(lx * 0.8, ly * 0.8);
 }
+
+/* ── charcoal ────────────────────────────────────────────────── */
+
+/**
+ * A drawn line, the way charcoal actually goes down: not one clean
+ * curve but a few overlapping passes of varying pressure, wobbling a
+ * little where the hand hesitated. `pts` is the piece of the line to
+ * draw now — the caller decides how much of it exists yet.
+ */
+export function charcoal(ctx, pts, color, opts = {}) {
+  if (!pts || pts.length < 2) return;
+  const { alpha = 0.5, width = 1.3, wobble = 1.1, passes = 2, seed = 1 } = opts;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let pass = 0; pass < passes; pass++) {
+    const k = pass / Math.max(1, passes - 1);
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const q = pts[i];
+      const ph = (i + seed * 7.3) * (1.1 + pass * 0.7);
+      const ox = pass ? Math.sin(ph) * wobble * (0.4 + k) : 0;
+      const oy = pass ? Math.cos(ph * 1.3) * wobble * (0.4 + k) : 0;
+      ctx[i ? 'lineTo' : 'moveTo'](q.x + ox, q.y + oy);
+    }
+    ctx.strokeStyle = css(color, alpha * (pass ? 0.3 : 1));
+    ctx.lineWidth = width * (pass ? 0.65 : 1);
+    ctx.stroke();
+  }
+}
+
+/**
+ * Parallel hatching across a shape's bounds — the shading a drawing is
+ * built from. Returned as segments so they can be laid down one at a
+ * time; clip to the shape before drawing them.
+ */
+export function hatchSegs(b, ang, step, opts = {}) {
+  const { rng = null, jitter = 0.35, over = 1.1, pieces = 1, weight = null } = opts;
+  const r = rng || (() => 0.5);
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  const diag = Math.hypot(b.w, b.h) * over;
+  const dx = Math.cos(ang), dy = Math.sin(ang);
+  const nx = -dy, ny = dx;
+  const out = [];
+  for (let d = -diag / 2; d <= diag / 2; d += step) {
+    const j = (r() - 0.5) * step * jitter;
+    const mx = cx + nx * (d + j), my = cy + ny * (d + j);
+    const at = (u) => ({ x: mx + dx * (u - 0.5) * diag, y: my + dy * (u - 0.5) * diag });
+    for (let i = 0; i < pieces; i++) {
+      // each line breaks into strokes the length of a hand's movement
+      const span = 1 / pieces;
+      const u0 = i * span + r() * span * 0.22;
+      const u1 = Math.min(1, u0 + span * (0.5 + r() * 0.45));
+      const a = at(u0), c = at(u1);
+      if (weight && weight((a.x + c.x) / 2, (a.y + c.y) / 2) < r()) continue;
+      out.push({ a, b: c, k: r() });
+    }
+  }
+  return out;
+}
+
+/** The straight-line form of a hatch segment, ready for `charcoal`. */
+export const segPts = (s, n = 5) => {
+  const out = [];
+  for (let i = 0; i <= n; i++) out.push({ x: lerpN(s.a.x, s.b.x, i / n), y: lerpN(s.a.y, s.b.y, i / n) });
+  return out;
+};
+const lerpN = (a, b, t) => a + (b - a) * t;

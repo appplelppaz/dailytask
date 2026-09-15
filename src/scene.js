@@ -7,7 +7,7 @@
 
 import { ENGINES } from './engines.js';
 import { drawTrace } from './traces.js';
-import { makeRng, hashString, clamp, css, glow, TAU, lerp } from './util.js';
+import { makeRng, hashString, clamp, css, glow, TAU } from './util.js';
 
 const TRACE_MS = 700;        // 400–900ms, then it simply stays
 
@@ -134,77 +134,66 @@ export class Scene {
     return a.rest;
   }
 
-  /** The way in. Drawn in the world's own palette, never as a button. */
+  /**
+   * The way out of a task: one obvious, tappable mark. It is the same in
+   * every world on purpose — a person finishing a task at 23:40 should not
+   * have to work out what this world wants from them.
+   */
+  tapSpot() {
+    const w = this.w, h = this.h;
+    const r = Math.max(30, Math.min(44, Math.min(w, h) * 0.078));
+    return { x: w / 2, y: Math.min(h * 0.74, h - (r * 2 + 96)), r };
+  }
+
   drawAffordance(env) {
     const { ctx } = this;
-    const a = this.anchors;
-    const pal = this.design.pal;
-    const type = this.design.completion.type;
+    const s = this.tapSpot();
     const g = clamp(this.state.gesture);
-    const pulse = this.reduced ? 0.6 : 0.5 + 0.5 * Math.sin(env.time * 1.7);
+    const breathe = this.reduced ? 0 : 0.5 + 0.5 * Math.sin(env.time * 1.6);
+    const r = s.r * (1 - g * 0.06);
 
     ctx.save();
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    if (type === 'trace') {
-      ctx.setLineDash(this.reduced ? [] : [2, 9]);
-      ctx.strokeStyle = css(pal[4], 0.3 + pulse * 0.2, 10);
-      ctx.lineWidth = this.reduced ? 2.2 : 1.4;
-      ctx.beginPath();
-      a.path.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
-      ctx.stroke();
-      ctx.setLineDash([]);
-      // the part already followed warms up
-      const lim = Math.max(1, Math.round(a.path.length * g));
-      ctx.strokeStyle = css(pal[4], 0.85, 16);
-      ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      a.path.slice(0, lim).forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
-      ctx.stroke();
-      const head = a.path[0];
-      glow(ctx, head.x, head.y, 26 + pulse * 6, pal[4], 0.3);
-    } else if (type === 'hold') {
-      const r = 26 + pulse * 3;
-      glow(ctx, a.head.x, a.head.y, r * 2.4, pal[4], 0.2 + g * 0.3);
-      ctx.strokeStyle = css(pal[4], 0.45 + g * 0.5, 12);
-      ctx.lineWidth = this.reduced ? 1.4 + g * 4 : 1.6 + g * 2.6;
-      ctx.beginPath(); ctx.arc(a.head.x, a.head.y, r, 0, TAU); ctx.stroke();
-      // the hold reads as the shape closing around itself
-      ctx.strokeStyle = css(pal[4], 0.95, 20);
-      ctx.lineWidth = 2.6;
-      ctx.beginPath(); ctx.arc(a.head.x, a.head.y, r, -Math.PI / 2, -Math.PI / 2 + TAU * g); ctx.stroke();
-    } else {
-      const from = this.gestureFrom(a, g, type);
-      ctx.strokeStyle = css(pal[4], 0.22 + pulse * 0.12, 6);
-      ctx.lineWidth = 1.1;
-      ctx.setLineDash(this.reduced ? [] : [3, 7]);
-      ctx.beginPath(); ctx.moveTo(a.head.x, a.head.y); ctx.lineTo(a.rest.x, a.rest.y); ctx.stroke();
-      ctx.setLineDash([]);
-      // destination
-      ctx.strokeStyle = css(pal[4], 0.4 + g * 0.5, 8);
-      ctx.lineWidth = 1.4 + g * 1.6;
-      ctx.beginPath(); ctx.arc(a.rest.x, a.rest.y, 16 + (1 - g) * 8, 0, TAU); ctx.stroke();
-      // the thing in hand
-      glow(ctx, from.x, from.y, 26, pal[4], 0.3 + g * 0.3);
-      ctx.fillStyle = css(pal[4], 0.9, 16);
-      ctx.beginPath(); ctx.arc(from.x, from.y, 7 + g * 2, 0, TAU); ctx.fill();
+    // a halo, so the mark survives whatever is painted underneath it
+    const halo = ctx.createRadialGradient(s.x, s.y, r * 0.6, s.x, s.y, r * 2.5);
+    halo.addColorStop(0, 'rgba(0,0,0,.52)');
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(s.x, s.y, r * 2.5, 0, TAU); ctx.fill();
+
+    // one slow ring going out, the only movement here
+    if (!this.reduced) {
+      ctx.strokeStyle = `rgba(255,255,255,${0.2 * (1 - breathe)})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(s.x, s.y, r * (1 + breathe * 0.32), 0, TAU); ctx.stroke();
     }
+
+    // the disc
+    ctx.fillStyle = `rgba(10,12,16,${0.72 + g * 0.2})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = `rgba(255,255,255,${0.62 + g * 0.35})`;
+    ctx.lineWidth = 1.6 + g * 1.4;
+    ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, TAU); ctx.stroke();
+
+    // the mark: a check, drawn on press
+    const k = r * 0.46;
+    const a = { x: s.x - k * 0.92, y: s.y + k * 0.06 };
+    const b = { x: s.x - k * 0.24, y: s.y + k * 0.68 };
+    const c = { x: s.x + k * 0.94, y: s.y - k * 0.62 };
+    ctx.strokeStyle = `rgba(255,255,255,${0.82 + g * 0.18})`;
+    ctx.lineWidth = Math.max(2.4, r * 0.11);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y);
+    ctx.stroke();
+
     ctx.restore();
   }
 
-  gestureFrom(a, g, type) {
-    if (type === 'fold') return { x: lerp(a.head.x, a.rest.x, g), y: lerp(a.head.y, a.rest.y, g) };
-    const k = Math.min(1, g / 0.72);
-    return { x: lerp(a.head.x, a.rest.x, k), y: lerp(a.head.y, a.rest.y, k) };
-  }
-
-  /** Geometry for the hit target, in the shape the gesture needs. */
+  /** Geometry for the hit target: one circle, whatever the world is. */
   affordanceSpec() {
-    if (!this.anchors || !this.state.canComplete || this.state.completed) return null;
-    const a = this.anchors;
-    const type = this.design.completion.type;
-    if (type === 'trace') return { type, path: a.path, tolerance: 48 };
-    if (type === 'hold') return { type, handle: { ...a.head, r: 34 } };
-    return { type, handle: { ...a.head, r: 30 }, target: a.rest, snap: 44 };
+    if (!this.state.canComplete || this.state.completed) return null;
+    return { type: 'tap', handle: this.tapSpot() };
   }
 }

@@ -1,10 +1,11 @@
 // ─────────────────────────────────────────────────────────────
-// The completion gesture. Time running out never completes a task —
-// the person does, by touching something inside the world.
+// The completion control. Time running out never completes a task —
+// the person does, by tapping the mark the stage puts on screen.
 //
-// Six gesture families, one controller. Each reports a 0..1 value the
-// design draws its own feedback from, and calls back exactly once.
-// Pointer, touch and keyboard all reach the same place.
+// One tap is the whole gesture: the same in every world, so finishing a
+// task is never a puzzle. The slower gesture families are kept below for
+// worlds that ask for them. Pointer, touch and keyboard reach the same
+// place, and the callback runs exactly once.
 // ─────────────────────────────────────────────────────────────
 
 import { clamp } from './util.js';
@@ -43,8 +44,12 @@ export class CompletionControl {
     el.addEventListener('keydown', this.onKeyDown);
     el.addEventListener('keyup', this.onKeyUp);
     el.addEventListener('blur', this.onKeyUp);
-    // A plain click must not complete anything: the gesture is the point.
-    el.addEventListener('click', (e) => e.preventDefault());
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Some browsers synthesise a click without a usable pointerup
+      // (assistive tech, mouse emulation); honour it for the tap control.
+      if (this.spec?.type === 'tap' && !this.fired && e.detail === 0) this.finish();
+    });
   }
 
   /** Canvas-space position of a pointer event. */
@@ -60,6 +65,7 @@ export class CompletionControl {
     this.pointer = this.toLocal(e);
     this.holdStart = performance.now();
     this.settleStart = 0;
+    if (this.spec.type === 'tap') this.t = Math.max(this.t, 0.5);
     if (this.spec.type === 'trace') this.traceHits = 0;
     if (this.spec.handle) {
       this.grabbed = { dx: this.pointer.x - this.spec.handle.x, dy: this.pointer.y - this.spec.handle.y };
@@ -73,10 +79,13 @@ export class CompletionControl {
     e.preventDefault();
   };
 
-  onUp = () => {
+  onUp = (e) => {
+    const tap = this.pressing && this.spec?.type === 'tap';
     this.pressing = false;
     this.grabbed = null;
     this.settleStart = 0;
+    // A tap counts when the finger lifts on the mark it went down on.
+    if (tap && e && e.type === 'pointerup' && this.inHandle(this.toLocal(e))) this.finish();
   };
 
   onLeave = () => { if (!this.el.hasPointerCapture) this.onUp(); };
@@ -85,6 +94,7 @@ export class CompletionControl {
     if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
     e.preventDefault();
     if (this.keyDown || this.fired || !this.spec) return;
+    if (this.spec.type === 'tap') { this.finish(); return; }
     this.keyDown = true;
     this.keyStart = performance.now();
   };
@@ -114,6 +124,9 @@ export class CompletionControl {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (const p of spec.path) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
       x = x0 - pad; y = y0 - pad; w = (x1 - x0) + pad * 2; h = (y1 - y0) + pad * 2;
+    } else if (spec.type === 'tap') {
+      const r = (spec.handle.r || 34) * 1.45;
+      x = spec.handle.x - r; y = spec.handle.y - r; w = r * 2; h = r * 2;
     } else if (spec.type === 'drag' || spec.type === 'join' || spec.type === 'anchor' || spec.type === 'fold') {
       // cover both the handle and where it has to end up
       const tx = spec.target?.x ?? spec.handle.x, ty = spec.target?.y ?? spec.handle.y;
@@ -129,6 +142,20 @@ export class CompletionControl {
     s.width = `${Math.round(Math.max(48, w))}px`; s.height = `${Math.round(Math.max(48, h))}px`;
   }
 
+  /** Is this point on the tappable mark? Generous: fingers are not precise. */
+  inHandle(p) {
+    const h = this.spec?.handle;
+    return !!h && Math.hypot(p.x - h.x, p.y - h.y) <= (h.r || 34) * 1.45;
+  }
+
+  /** Complete, once. */
+  finish() {
+    if (this.fired || !this.spec) return;
+    this.fired = true;
+    this.t = 1;
+    this.onComplete();
+  }
+
   reset() { this.t = 0; this.pressing = false; this.keyDown = false; this.traceHits = 0; }
 
   /** Advance the gesture. Returns the 0..1 value for the design to draw. */
@@ -138,6 +165,13 @@ export class CompletionControl {
     if (!this.spec || this.fired) return this.t;
     const spec = this.spec;
     let target = null;          // where t should head this frame
+
+    if (spec.type === 'tap') {
+      // the mark only brightens under the finger; the lift does the rest
+      target = this.pressing ? 1 : 0;
+      this.t = target ? Math.min(1, this.t + dt / 120) : Math.max(0, this.t - DECAY * dt * 2.4);
+      return this.t;
+    }
 
     if (this.keyDown) {
       target = clamp((now - this.keyStart) / KEY_MS);

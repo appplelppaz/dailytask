@@ -128,8 +128,9 @@ function tick() {
 
   // one line of guidance, only when there is something to say
   if (scene.state.canComplete) {
-    hintEl.textContent = show.design.completion.affordance;
-    affordanceEl.setAttribute('aria-description', show.design.completion.affordance);
+    // one line, one instruction — the same in every world
+    hintEl.textContent = 'チェックをタップして完了';
+    affordanceEl.setAttribute('aria-description', `${show.task.key} を完了としてマークします`);
   } else if (paused) {
     hintEl.textContent = '一時停止中 — もう一度タップで再開';
   } else if (!active) {

@@ -77,12 +77,11 @@
     #countdown[data-beat] span { animation: none; opacity: 1; }
   }
 
-  /* ── the completion target: a hit area, never a label ── */
+  /* ── the completion target: a hit area over the mark the canvas draws ── */
   #affordance {
     position: fixed; z-index: 3; background: none; border: 0; padding: 0; margin: 0;
-    cursor: grab; touch-action: none; border-radius: 22px;
+    cursor: pointer; touch-action: none; border-radius: 50%;
   }
-  #affordance:active { cursor: grabbing; }
   #affordance:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: 4px; }
 
   /* ── sheets: Record and Settings ── */
