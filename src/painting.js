@@ -75,12 +75,24 @@ export const painting = {
     if (st.lastW !== w || st.lastH !== h || st.layer.width !== Math.round(w * dpr)) {
       st.layer.width = Math.round(w * dpr);
       st.layer.height = Math.round(h * dpr);
-      st.lastW = w; st.lastH = h; st.doneP = -1;
+      st.lastW = w; st.lastH = h; st.doneP = -1; st.masked = false;
       st.cache.clear();
     }
 
     const lc = st.layer.getContext('2d');
     lc.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // The bare edge of the canvas is cut into the layer once and then simply
+    // stays: clipping it on every composite instead costs more than all the
+    // painting does, because each restore makes the renderer flush the whole
+    // picture again.
+    const rr = Math.min(w, h) * 0.012;
+    if (!st.masked) {
+      lc.restore();
+      lc.save();
+      lc.beginPath(); lc.roundRect(F.x, F.y, F.w, F.h, rr); lc.clip();
+      st.masked = true;
+    }
 
     if (subject.layered) {
       // paint only what has happened since last time; scrubbing backwards
@@ -110,10 +122,6 @@ export const painting = {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // the picture, cut to the bare edge of its canvas
-    const rr = Math.min(w, h) * 0.012;
-    ctx.save();
-    ctx.beginPath(); ctx.roundRect(F.x, F.y, F.w, F.h, rr); ctx.clip();
     ctx.drawImage(st.layer, 0, 0, w, h);
 
     // varnish and raking light sit on the surface, not in the paint
@@ -128,13 +136,10 @@ export const painting = {
       ctx.fillRect(F.x, F.y, F.w, F.h);
       ctx.globalAlpha = 1;
     }
-    ctx.restore();
 
-    ctx.save();
     ctx.strokeStyle = 'rgba(0,0,0,.3)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(F.x, F.y, F.w, F.h, rr); ctx.stroke();
-    ctx.restore();
   },
 
   anchors(env) {
@@ -167,15 +172,14 @@ export function paintOf(subject, prm) {
 
 /** Bare canvas and its weave — laid once, underneath everything. */
 function ground(ctx, env, C, F) {
-  const { w, h } = env;
   ctx.fillStyle = css(C.canvas);
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(F.x, F.y, F.w, F.h);
   const wv = weavePattern(ctx);
   if (wv) {
     ctx.save();
     ctx.globalAlpha = 0.1;
     ctx.fillStyle = wv;
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(F.x, F.y, F.w, F.h);
     ctx.restore();
   }
 }
@@ -266,14 +270,16 @@ function paintRange(ctx, env, subject, C, F, p0, p1) {
   g.batch(0.0, 0.055, g.cache('wash', () => {
     const rr = makeRng((seed ^ 0x9e37) >>> 0);
     const out = [{ tone: true }];
-    for (let i = 0; i < 2400; i++) out.push({ x: rr() * w, y: rr() * h, k: rr(), a: -0.2 + (rr() - 0.5) * 0.42 });
+    for (let i = 0; i < 2400; i++) {
+      out.push({ x: F.x + rr() * F.w, y: F.y + rr() * F.h, k: rr(), a: -0.2 + (rr() - 0.5) * 0.42 });
+    }
     return out;
   }), (q) => {
     ctx.save();
     if (q.tone) {
       ctx.globalAlpha = 0.5;
       ctx.fillStyle = css(C.ground, 1, 6);
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillRect(F.x, F.y, F.w, F.h);
       ctx.restore();
       return;
     }
@@ -296,7 +302,7 @@ function paintRange(ctx, env, subject, C, F, p0, p1) {
     if (s0 > 0) {
       ctx.save();
       ctx.globalAlpha = 0.9;
-      texture(ctx, { x: 0, y: 0, w, h }, s0, C.ground,
+      texture(ctx, { x: F.x, y: F.y, w: F.w, h: F.h }, s0, C.ground,
               { rng: streams[0], n: 300, alpha: 0.12, ang: -0.22, spread: 0.3, wide: m * 0.035, len: 4.5 });
       ctx.restore();
     }
