@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { clamp, css, TAU } from '../util.js';
-import { texture, sketch, ellipsePts, pathOf, massFill, model, sphere } from '../painting.js';
+import { texture, sketch, ellipsePts, pathOf, massFill, model, sphere } from '../brush.js';
 
 function jugOutline(J) {
   const pts = [], n = 36, right = [];
