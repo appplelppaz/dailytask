@@ -659,7 +659,7 @@ function land(g, S, F, C, m, k) {
         ctx.fillStyle = css(q.spire ? C.village : (q.pale ? C.wallPale : C.wall), 0.99, (q.k - 0.5) * 6);
         pathOf(ctx, q.wall); ctx.fill();
         if (q.roof) {
-          ctx.fillStyle = css(q.k < 0.3 ? C.roofWarm : C.roof, 0.99, (q.k - 0.5) * 5);
+          ctx.fillStyle = css(q.k < 0.16 ? C.roofWarm : C.roof, 0.99, (q.k - 0.5) * 5);
           pathOf(ctx, q.roof); ctx.fill();
         }
         ctx.restore();
@@ -680,7 +680,7 @@ function land(g, S, F, C, m, k) {
         }
         return out.sort((p, q) => p.y - q.y);
       }, (q) => {
-        const col = q.roofy ? (q.k < 0.28 ? C.roofWarm : C.roof) : (q.k < 0.32 ? C.wallPale : C.wall);
+        const col = q.roofy ? (q.k < 0.16 ? C.roofWarm : C.roof) : (q.k < 0.32 ? C.wallPale : C.wall);
         oil(ctx, q.x, q.y, m * (0.007 + q.k * 0.009), q.roofy ? -0.85 + (q.r2 - 0.5) * 0.3 : (q.r2 - 0.5) * 0.24,
             m * (0.003 + q.k * 0.0024),
             [col[0] + (q.k - 0.5) * 8, col[1], col[2] + (q.r2 - 0.5) * 7],
