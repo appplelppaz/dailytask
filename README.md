@@ -12,6 +12,10 @@ ten-minute steps, from an hour earlier to two hours later. The tasks keep their
 lengths and order; only the hour they begin moves, and the nudge belongs to that
 night alone — the next one starts from the default again.
 
+The last three seconds before a night begins are counted down on screen —
+three, two, one — at the default hour or at whatever hour it was nudged to, so
+there is never any doubt that the routine has actually started.
+
 A tap on the world holds the night still, and another lets it go. Everything
 after it moves back by exactly as long as it was held, so an interruption costs
 the routine its own length and nothing more. The hold survives the app being

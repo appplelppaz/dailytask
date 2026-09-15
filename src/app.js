@@ -12,10 +12,14 @@ import {
 import { DESIGNS } from './designs.js';
 import { store } from './store.js';
 import { audio } from './audio.js';
+import { cue, N } from './cues.js';
 import { Scene } from './scene.js';
 import { CompletionControl } from './completion.js';
 import { renderArchive } from './history.js';
 import { clamp } from './util.js';
+
+const COUNT_FROM = 3;      // seconds of countdown before a night begins
+const COUNT_TICK = cue('glass', [N(4)], { spread: 0, durationMs: 150, gain: 0.05, attackMs: 4, releaseMs: 90 });
 
 const GRACE_MS = 120000;   // how long a finished world waits to be closed by hand
 const DWELL_MS = 8000;     // and how long its trace rests there afterwards
@@ -29,10 +33,14 @@ const worldNameEl = el('worldName');
 const hintEl = el('hint');
 const affordanceEl = el('affordance');
 const archiveEl = el('archive');
+const countdownEl = el('countdown');
+const countdownNum = countdownEl.querySelector('span');
 
 let pending = null;        // a finished task waiting for the person
 let lastSessionId = null;
 let primed = false;        // first tick after load never rings anything
+let startsAtMs = null;     // when the night begins, in wall-clock ms
+let countShown = 0;        // the number on screen, so each one beats once
 
 /** Which world belongs to this task on this night. */
 function designFor(sch, task) {
@@ -105,6 +113,12 @@ function tick() {
   scene.state.canComplete = !!pending && !completed;
   if (completed) scene.markCompleted();
 
+  // when the night begins, in wall-clock terms — the countdown reads from
+  // this, so it stays smooth between ticks
+  startsAtMs = (!pending && st.mode === 'dormant')
+    ? Date.now() + (st.sch.start - now) * 1000
+    : null;
+
   const paused = isPaused();
   scene.setPaused(paused);
 
@@ -144,11 +158,33 @@ function playCue(c) {
 let lastDraw = 0;
 function frame(now) {
   requestAnimationFrame(frame);
+  tickCountdown();
   const step = scene.reduced ? 250 : 33;        // slow worlds do not need 60fps
   if (now - lastDraw < step) return;
   lastDraw = now;
   scene.state.gesture = control.tick(now);
   scene.frame(now);
+}
+
+/** Three, two, one — so that a night beginning is unmistakable. */
+function tickCountdown() {
+  const left = startsAtMs === null ? Infinity : (startsAtMs - Date.now()) / 1000;
+  const n = (left > 0 && left <= COUNT_FROM) ? Math.ceil(left) : 0;
+  if (n === countShown) return;
+  countShown = n;
+  if (!n) {
+    countdownEl.hidden = true;
+    countdownEl.removeAttribute('data-beat');
+    hintEl.hidden = false;
+    return;
+  }
+  countdownNum.textContent = String(n);
+  countdownEl.hidden = false;
+  hintEl.hidden = true;                          // the number stands on its own
+  countdownEl.removeAttribute('data-beat');
+  void countdownEl.offsetWidth;                  // restart the beat for each number
+  countdownEl.setAttribute('data-beat', String(n));
+  if (store.prefs.sound) audio.play(COUNT_TICK, (store.prefs.volume ?? 0.8) * 0.5);
 }
 requestAnimationFrame(frame);
 
