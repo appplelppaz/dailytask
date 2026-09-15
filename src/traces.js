@@ -395,12 +395,23 @@ export const TRACES = {
     });
   },
 
+  // a crescent of sheen, the way oil catches the light — not a solid shape
   moonArc(ctx, x, y, s, c, p) {
-    ctx.fillStyle = css(c[4], 0.6 * p, 16);
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(x, y, s * 0.42, 0.7, -0.7);
-    ctx.arc(x + s * 0.2, y, s * 0.4, -0.85, 0.85, true);
-    ctx.fill();
+    ctx.arc(x, y, s * 0.36, 0.72, -0.72);
+    ctx.arc(x + s * 0.17, y, s * 0.34, -0.86, 0.86, true);
+    ctx.closePath();
+    ctx.clip();
+    const g = ctx.createLinearGradient(x - s * 0.36, y - s * 0.3, x + s * 0.2, y + s * 0.3);
+    g.addColorStop(0, css(c[4], 0.08 * p, 10));
+    g.addColorStop(0.45, css(c[4], 0.5 * p, 18));
+    g.addColorStop(1, css(c[4], 0.06 * p, 8));
+    ctx.fillStyle = g;
+    ctx.fillRect(x - s, y - s, s * 2, s * 2);
+    ctx.restore();
+    ctx.strokeStyle = css(c[4], 0.3 * p, 20); ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.arc(x, y, s * 0.36, 0.72, -0.72); ctx.stroke();
   },
 
   foldFan(ctx, x, y, s, c, p) {

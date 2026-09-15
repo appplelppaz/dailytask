@@ -81,7 +81,7 @@ export class Scene {
       if (!this.completedAt) this.completedAt = now;
       const phase = this.reduced ? 1 : clamp((now - this.completedAt) / TRACE_MS);
       const spot = this.tracePoint();
-      const size = Math.min(this.w, this.h) * 0.2;
+      const size = Math.min(this.w, this.h) * 0.17;
       drawTrace(this.ctx, this.design.mark, spot.x, spot.y, size, this.design.pal, phase, this.rng);
     }
   }
