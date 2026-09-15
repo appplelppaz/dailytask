@@ -11,6 +11,8 @@ export const OFFSET_MIN = -60;
 export const OFFSET_MAX = 120;
 export const OFFSET_STEP = 10;
 
+const TAIL_SEC = 30 * 60;   // grace after the last task, still that night
+
 export const TASKS = [
   { key: 'PIANO',   min: 120 },
   { key: 'ENGLISH', min: 30  },
@@ -22,6 +24,15 @@ export const TASKS = [
 
 const WEEKDAY_START = 19 * 3600 + 30 * 60;   // 19:30
 const WEEKEND_START = 20 * 3600;             // 20:00
+
+/** Total length of the routine, ignoring any nudge. */
+const TOTAL_SEC = TASKS.reduce((sum, t) => sum + t.min * 60, 0);
+
+/** A day's start without the nudge — used to work out which night we are in. */
+function baseStartFor(dn) {
+  const dow = new Date(dn * 86400000).getUTCDay();
+  return (dow === 0 || dow === 6) ? WEEKEND_START : WEEKDAY_START;
+}
 
 let dtf = null;
 try {
@@ -55,7 +66,15 @@ export const dateKey = (dn) => new Date(dn * 86400000).toISOString().slice(0, 10
  */
 export function nightDayNum() {
   const w = wallClock();
-  return dayNumOf(w.y, w.mo, w.d) - (w.h < 12 ? 1 : 0);
+  const today = dayNumOf(w.y, w.mo, w.d);
+  const nowSec = today * 86400 + w.h * 3600 + w.mi * 60 + w.s;
+  // Last night's routine can still be running in the small hours. Allow for
+  // the largest nudge it could have been given, plus the window in which a
+  // finished task waits to be closed by hand; past that, the night is over
+  // and anything set now is meant for the evening ahead.
+  const prevEnd = (today - 1) * 86400 + baseStartFor(today - 1) + TOTAL_SEC
+                  + OFFSET_MAX * 60 + TAIL_SEC;
+  return nowSec < prevEnd ? today - 1 : today;
 }
 export const nightKey = () => dateKey(nightDayNum());
 

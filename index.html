@@ -44,7 +44,7 @@
   }
   #taskName[data-state="dormant"] { opacity: .38; }
   #taskName[data-state="closing"] { color: rgba(255,255,255,.95); }
-  #taskName[data-state="paused"] { opacity: .5; letter-spacing: .5em; }
+  #taskName[data-state="paused"] { opacity: .55; }
   #worldName {
     margin: 7px 0 0; font-size: 11px; font-weight: 300; letter-spacing: .22em;
     color: rgba(255,255,255,.26); text-transform: uppercase;
@@ -54,6 +54,7 @@
     color: rgba(255,255,255,.5); min-height: 1.2em; max-width: 30ch;
     transition: opacity .6s ease;
   }
+  #hint[data-paused] { color: rgba(255,255,255,.88); letter-spacing: .12em; }
 
   /* ── the completion target: a hit area, never a label ── */
   #affordance {

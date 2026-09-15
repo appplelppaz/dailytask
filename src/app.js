@@ -118,9 +118,14 @@ function tick() {
     affordanceEl.setAttribute('aria-description', show.design.completion.affordance);
   } else if (paused) {
     hintEl.textContent = '一時停止中 — もう一度タップで再開';
+  } else if (!active) {
+    // a world at the very start and a world not yet started look alike, so
+    // say which one this is
+    hintEl.textContent = '開始前';
   } else {
     hintEl.textContent = '';
   }
+  if (paused) hintEl.dataset.paused = '1'; else delete hintEl.dataset.paused;
   stage.setAttribute('aria-label', paused
     ? 'タスクの進行は一時停止中。もう一度押すと再開します'
     : 'タスクの進行を一時停止');

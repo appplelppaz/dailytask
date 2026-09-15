@@ -63,6 +63,7 @@ export class Scene {
 
   /** Hold or release the world's own slow movement. */
   setPaused(on) {
+    this.state.paused = !!on;
     if (on && !this.pausedAt) this.pausedAt = performance.now();
     else if (!on && this.pausedAt) { this.t0 += performance.now() - this.pausedAt; this.pausedAt = 0; }
   }
@@ -82,6 +83,8 @@ export class Scene {
     this.engine.draw(env);
     this.anchors = this.engine.anchors(env);
 
+    if (this.state.paused) this.drawPaused(env);
+
     const done = this.state.completed;
     if (!done && this.state.canComplete) this.drawAffordance(env);
     if (done) {
@@ -91,6 +94,36 @@ export class Scene {
       const size = Math.min(this.w, this.h) * 0.17;
       drawTrace(this.ctx, this.design.mark, spot.x, spot.y, size, this.design.pal, phase, this.rng);
     }
+  }
+
+  /**
+   * Being held still has to be unmistakable — a stopped world and a slow one
+   * look alike, and a routine that quietly is not running is worse than an
+   * ugly overlay.
+   */
+  drawPaused(env) {
+    const { ctx, w, h } = this;
+    const pal = this.design.pal;
+    ctx.save();
+    const veil = ctx.createRadialGradient(w / 2, h * 0.5, 0, w / 2, h * 0.5, Math.hypot(w, h) * 0.55);
+    veil.addColorStop(0, css(pal[0], 0.44));
+    veil.addColorStop(1, css(pal[0], 0.7));
+    ctx.fillStyle = veil;
+    ctx.fillRect(0, 0, w, h);
+
+    const r = Math.min(w, h) * 0.085;
+    glow(ctx, w / 2, h * 0.5, r * 2.6, pal[4], 0.16);
+    ctx.strokeStyle = css(pal[4], 0.42, 8);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(w / 2, h * 0.5, r, 0, TAU); ctx.stroke();
+
+    ctx.fillStyle = css(pal[4], 0.72, 12);
+    const bw = r * 0.16, bh = r * 0.62, gap = r * 0.2;
+    ctx.beginPath();
+    ctx.roundRect(w / 2 - gap - bw, h * 0.5 - bh / 2, bw, bh, bw * 0.4);
+    ctx.roundRect(w / 2 + gap, h * 0.5 - bh / 2, bw, bh, bw * 0.4);
+    ctx.fill();
+    ctx.restore();
   }
 
   tracePoint() {
