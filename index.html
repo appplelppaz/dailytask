@@ -38,8 +38,10 @@
 
   /* the canvas carries the numbers; all that is left here is the one line
      under the completion mark, so it sits centred beneath it */
+  /* the one line of guidance sits just under the completion mark, not at
+     the foot of the screen where it would be a long way from it */
   #caption { position: absolute; left: 0; right: 0; text-align: center;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
+    bottom: 20%; pointer-events: none; }
   #taskName {
     margin: 0; font-size: clamp(15px, 3.4vw, 19px); font-weight: 500;
     letter-spacing: .38em; color: rgba(255,255,255,.82);
@@ -52,10 +54,11 @@
     margin: 7px 0 0; font-size: 11px; font-weight: 300; letter-spacing: .22em;
     color: rgba(255,255,255,.26); text-transform: uppercase;
   }
+  /* legible at arm's length in the dark, which is the only way it is read */
   #hint {
-    margin: 10px 0 0; font-size: 11.5px; font-weight: 300; letter-spacing: .09em; line-height: 1.6;
-    color: rgba(255,255,255,.5); min-height: 1.2em; margin-inline: auto; max-width: 30ch;
-    transition: opacity .6s ease;
+    margin: 10px 0 0; font-size: clamp(15px, 4.2vw, 19px); font-weight: 400; letter-spacing: .04em;
+    line-height: 1.6; color: rgba(255,255,255,.62); min-height: 1.2em;
+    margin-inline: auto; max-width: 22ch; transition: opacity .6s ease;
   }
   #hint[data-paused] { color: rgba(255,255,255,.88); letter-spacing: .12em; }
 
@@ -98,61 +101,61 @@
   }
   @media (min-width: 680px) { .sheet-panel { inset: 50% 50% auto auto; transform: translate(50%, -50%); border-radius: 22px; } }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .sheet-head h2 { margin: 0; font-size: 11px; font-weight: 400; letter-spacing: .3em; color: rgba(255,255,255,.5); }
+  .sheet-head h2 { margin: 0; font-size: 14px; font-weight: 400; letter-spacing: .3em; color: rgba(255,255,255,.5); }
   .sheet-close { width: 40px; height: 40px; background: none; border: 0; color: rgba(255,255,255,.45); cursor: pointer; }
   .sheet-close:hover, .sheet-close:focus-visible { color: #fff; }
 
   /* ── settings ── */
-  .set-label { margin: 0 0 12px; font-size: 11px; letter-spacing: .16em; color: rgba(255,255,255,.55); }
+  .set-label { margin: 0 0 12px; font-size: 15px; letter-spacing: .14em; color: rgba(255,255,255,.7); }
   .set-stepper { display: flex; align-items: center; justify-content: center; gap: 6px; }
   .set-stepper button {
     width: 54px; height: 54px; flex: none; border-radius: 50%;
     background: none; border: 1px solid rgba(255,255,255,.16); color: rgba(255,255,255,.8);
-    font-size: 20px; line-height: 1; cursor: pointer; transition: border-color .2s ease, color .2s ease;
+    font-size: 26px; line-height: 1; cursor: pointer; transition: border-color .2s ease, color .2s ease;
   }
   .set-stepper button:hover:not(:disabled), .set-stepper button:focus-visible { border-color: rgba(255,255,255,.5); color: #fff; }
   .set-stepper button:disabled { opacity: .25; cursor: default; }
   #offsetValue {
-    flex: 1; text-align: center; font-size: 21px; font-weight: 300; letter-spacing: .04em;
+    flex: 1; text-align: center; font-size: 28px; font-weight: 300; letter-spacing: .04em;
     color: #fff; font-variant-numeric: tabular-nums;
   }
   .set-times { display: flex; gap: 8px; margin: 18px 0 0; }
   .set-times > div {
     flex: 1; padding: 12px 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; text-align: center;
   }
-  .set-times dt { font-size: 9.5px; letter-spacing: .14em; color: rgba(255,255,255,.35); }
-  .set-times dd { margin: 5px 0 0; font-size: 17px; font-weight: 300; color: #fff; font-variant-numeric: tabular-nums; }
-  .set-times dd small { font-size: 11px; color: rgba(255,255,255,.3); margin-right: 5px; text-decoration: line-through; }
+  .set-times dt { font-size: 13px; letter-spacing: .12em; color: rgba(255,255,255,.5); }
+  .set-times dd { margin: 6px 0 0; font-size: 24px; font-weight: 300; color: #fff; font-variant-numeric: tabular-nums; }
+  .set-times dd small { font-size: 15px; color: rgba(255,255,255,.3); margin-right: 5px; text-decoration: line-through; }
   .set-reset {
     display: block; margin: 16px auto 0; padding: 9px 16px; min-height: 40px;
-    background: none; border: 0; color: rgba(255,255,255,.4); font-size: 11px; letter-spacing: .1em; cursor: pointer;
+    background: none; border: 0; color: rgba(255,255,255,.55); font-size: 15px; letter-spacing: .08em; cursor: pointer;
   }
   .set-reset:hover, .set-reset:focus-visible { color: #fff; }
-  .set-note { margin: 18px 2px 0; font-size: 9.5px; font-weight: 300; line-height: 1.8; color: rgba(255,255,255,.28); letter-spacing: .04em; }
+  .set-note { margin: 20px 2px 0; font-size: 14px; font-weight: 400; line-height: 1.75; color: rgba(255,255,255,.45); letter-spacing: .02em; }
   /* ── the record: a plain month calendar ── */
   .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .cal-title { font-size: 13px; font-weight: 400; letter-spacing: .1em; color: rgba(255,255,255,.85); }
+  .cal-title { font-size: 18px; font-weight: 400; letter-spacing: .1em; color: rgba(255,255,255,.85); }
   .cal-nav {
     width: 40px; height: 40px; background: none; border: 0; cursor: pointer;
-    font-size: 18px; line-height: 1; color: rgba(255,255,255,.5); transition: color .2s ease;
+    font-size: 24px; line-height: 1; color: rgba(255,255,255,.6); transition: color .2s ease;
   }
   .cal-nav:hover:not(:disabled), .cal-nav:focus-visible { color: #fff; }
   .cal-nav:disabled { opacity: .2; cursor: default; }
   .cal-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 4px; }
-  .cal-week span { text-align: center; font-size: 9.5px; letter-spacing: .06em; color: rgba(255,255,255,.3); }
+  .cal-week span { text-align: center; font-size: 13px; letter-spacing: .04em; color: rgba(255,255,255,.42); }
   .cal-week span[data-sun] { color: rgba(255,150,150,.4); }
   .cal-week span[data-sat] { color: rgba(150,190,255,.4); }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
   .cal-day {
-    display: flex; flex-direction: column; align-items: center; gap: 5px;
-    padding: 7px 0 8px; border-radius: 9px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 9px 0 10px; border-radius: 10px;
   }
   .cal-day[data-today] { background: rgba(255,255,255,.07); }
   .cal-day[data-future] { opacity: .28; }
-  .cal-num { font-size: 11.5px; font-weight: 400; color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums; }
+  .cal-num { font-size: 17px; font-weight: 400; color: rgba(255,255,255,.62); font-variant-numeric: tabular-nums; }
   .cal-day[data-today] .cal-num { color: #fff; font-weight: 600; }
   .cal-day[data-full] .cal-num { color: rgba(255,255,255,.9); }
-  .cal-dots { display: flex; gap: 1.5px; height: 5px; }
+  .cal-dots { display: flex; gap: 2px; height: 6px; }
   .cal-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.09); }
   .cal-day[data-future] .cal-dots { visibility: hidden; }
 
@@ -161,8 +164,8 @@
     margin: 20px 0 0; padding: 14px 2px 0; border-top: 1px solid rgba(255,255,255,.08);
   }
   .cal-legend li { display: flex; align-items: center; gap: 6px; }
-  .cal-legend i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
-  .cal-legend span { font-size: 9.5px; letter-spacing: .12em; color: rgba(255,255,255,.5); }
+  .cal-legend i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .cal-legend span { font-size: 13px; letter-spacing: .08em; color: rgba(255,255,255,.62); }
 </style>
 </head>
 <body>

@@ -17,7 +17,6 @@ import { Scene } from './scene.js';
 import { CompletionControl } from './completion.js';
 import { renderArchive, TASK_COLORS } from './history.js';
 import { clamp } from './util.js';
-import { hms } from './timer.js';
 
 const COUNT_FROM = 3;      // seconds of countdown before a night begins
 const COUNT_TICK = cue('glass', [N(4)], { spread: 0, durationMs: 150, gain: 0.05, attackMs: 4, releaseMs: 90 });
@@ -47,7 +46,7 @@ let countShown = 0;        // the number on screen, so each one beats once
 // the repository, but a routine you do at the same time every evening
 // wants the same picture every evening — the point is to read it without
 // thinking, not to be surprised by it.
-const SCREEN = DESIGNS.find((d) => d.engine === 'atlas');
+const SCREEN = DESIGNS.find((d) => d.engine === 'bar');
 
 /** Which world belongs to this task on this night. */
 function designFor() {
@@ -205,13 +204,12 @@ function tick() {
   if (paused) hintEl.dataset.paused = '1'; else delete hintEl.dataset.paused;
   // canvas text is invisible to a screen reader, so the stage says it instead
   const c = scene.state.clock;
-  const said = c.state === 'dormant' ? `${c.taskName} 開始まで ${hms(c.startsInSec)}`
+  const said = c.state === 'dormant' ? `${c.taskName} 開始前`
     : c.state === 'closing' ? `${c.taskName} 完了。チェックをタップしてください`
-    : `${c.taskName} のこり ${hms(c.remainingSec)}`;
-  const world = scene.env && scene.env.st && scene.env.st.said;
+    : `${c.taskName} 実行中`;
   stage.setAttribute('aria-label', paused
     ? `${said}。一時停止中。もう一度押すと再開します`
-    : `${said}。${world || ''}押すと一時停止します`);
+    : `${said}。押すと一時停止します`);
   stage.setAttribute('aria-pressed', String(paused));
 
   control.setSpec(scene.affordanceSpec());
