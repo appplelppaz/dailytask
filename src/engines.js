@@ -12,6 +12,7 @@
 
 import { clamp, lerp, css, glow, TAU, sweepCoord, smooth, easeOut, breathe, makeSpline, atT } from './util.js';
 import { painting } from './painting.js';
+import { history } from './history.js';
 
 // ── shared helpers ───────────────────────────────────────────
 
@@ -1650,4 +1651,4 @@ const radial = {
   }
 };
 
-export const ENGINES = { fog, trail, front, lines, strand, liquid, caustic, swarm, depth, radial, painting };
+export const ENGINES = { fog, trail, front, lines, strand, liquid, caustic, swarm, depth, radial, painting, history };

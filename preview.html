@@ -16,6 +16,7 @@
     padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
     background: #08090b; border-top: 1px solid rgba(255,255,255,.07);
   }
+  #stages[hidden] { display: none; }
   #stages { display: flex; gap: 3px; margin-bottom: 10px; }
   #stages span {
     flex: 1; text-align: center; font-size: 8.5px; letter-spacing: .06em;
@@ -60,24 +61,28 @@ import { Scene } from './src/scene.js';
 import { DESIGNS } from './src/designs.js';
 import { STAGES } from './src/painting.js';
 import { SUBJECTS } from './src/paintings/index.js';
+import { TOPICS } from './src/history/index.js';
 
-const works = DESIGNS.filter((d) => d.engine === 'painting');
+const works = DESIGNS.filter((d) => d.engine === 'painting' || d.engine === 'history');
 let which = 0;
 const scene = new Scene(document.getElementById('stage'));
 window.__preview = { scene };
+
+const stagesEl = document.getElementById('stages');
 
 function load(i) {
   which = (i + works.length) % works.length;
   const d = works[which];
   scene.setDesign(d, 'preview:' + d.id);
   scene.completedAt = 0;
-  const subj = SUBJECTS[d.prm.subject];
-  document.getElementById('label').textContent =
-    subj.artist ? `${subj.title} — ${subj.artist}, ${subj.year}` : subj.title;
+  const subj = d.engine === 'history' ? TOPICS[d.prm.topic] : SUBJECTS[d.prm.subject];
+  document.getElementById('label').textContent = subj
+    ? (subj.artist ? `${subj.title} — ${subj.artist}, ${subj.year}` : `${subj.title}　${subj.subtitle || ''}`)
+    : d.name;
+  stagesEl.hidden = d.engine !== 'painting';
   document.getElementById('work').textContent = `${which + 1} / ${works.length}`;
 }
 
-const stagesEl = document.getElementById('stages');
 const NAMES = { ground: '生地', sketch: '下描き', blockIn: '下塗り', modelling: '陰影', colour: '着彩', highlight: 'ハイライト', varnish: '仕上げ' };
 for (const [name] of STAGES) {
   const s = document.createElement('span');
