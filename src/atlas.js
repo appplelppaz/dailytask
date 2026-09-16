@@ -1,28 +1,30 @@
 // ─────────────────────────────────────────────────────────────
 // A country, and what happened in it.
 //
-// A country is drawn at random when the task begins. Its map fills the
-// screen, and the events of its history land on it one by one, each on
-// the spot where it actually happened — the bay the ships came into,
-// the hill the battle was fought on, the room the thing was written in.
-// The camera flies from one to the next, so the shape of a country's
-// history is visible as movement across its own land.
+// A country is drawn at random when a task begins, and its history runs
+// from beginning to end while the task lasts: every event lands on the
+// spot where it happened, with the name of the place and an account of
+// what it was and what it changed. The camera leans towards each event
+// and pulls back square to travel to the next, so the whole country
+// stays on screen — knowing where in the country you are looking is the
+// reason for using a map at all.
 //
-// A long task gets more than one country: a chapter runs about ten
-// minutes, so PIANO sees a dozen and a thirty-minute task sees three.
-// The time left is never hidden — the bar and the strip at the foot of
-// the screen are the same ones the plain timer used.
+// Events abroad — the wars, the missions, the invasions — are placed
+// where they actually happened whenever that is close enough to show on
+// the same map. The camera widens to take them in, which is itself worth
+// seeing: you watch a country reach outside itself and come back.
+//
+// There are no numbers counting down here. The time left shows as the
+// history left: the timeline at the foot of the screen fills up, and the
+// country ends when the task does.
 // ─────────────────────────────────────────────────────────────
 
 import { clamp, lerp, css, TAU } from './util.js';
-import { hms } from './timer.js';
-import { SHAPES } from './atlas/shapes.js';
-import { COUNTRIES } from './atlas/events.js';
+import { CATALOG } from './atlas/index.js';
 
-const CHAPTER_SEC = 600;     // about ten minutes on one country
-const HOLD = 0.34;           // of an event's slot spent sitting on it
-const FADE = 0.014;          // of a chapter spent changing country
-
+const CHAPTER_SEC = 1800;    // about how long one country should get
+const HOLD = 0.42;           // of an event's slot spent sitting on it
+const FADE = 0.012;          // of a chapter spent changing country
 const RAD = Math.PI / 180;
 
 /* ── the country ─────────────────────────────────────────────── */
@@ -33,7 +35,7 @@ const RAD = Math.PI / 180;
  * not four times too wide.
  */
 function build(country) {
-  const s = SHAPES[country.code];
+  const s = country.shape;
   let y0 = 1e9, y1 = -1e9;
   for (const r of s.r) for (let i = 1; i < r.length; i += 2) {
     y0 = Math.min(y0, r[i]); y1 = Math.max(y1, r[i]);
@@ -50,14 +52,13 @@ function build(country) {
     x0 = Math.min(x0, r[i]); x1 = Math.max(x1, r[i]);
     ty0 = Math.min(ty0, r[i + 1]); ty1 = Math.max(ty1, r[i + 1]);
   }
-  const events = country.events.map(([t, lon, lat, title, note], i) => ({
-    t, i, x: lon * k, y: -lat, title, note: note || ''
-  }));
-  return {
-    country, land, near, events,
-    box: { x: x0, y: ty0, w: x1 - x0, h: ty1 - ty0 },
-    span: Math.max(x1 - x0, ty1 - ty0)
-  };
+  const raw = country.events.map((e) => ({ ...e, x: e.lon * k, y: -e.lat }));
+  const box = { x: x0, y: ty0, w: x1 - x0, h: ty1 - ty0 };
+  const events = raw.map((e) => {
+    const p = hold(box, e.x, e.y);
+    return { ...e, x: p.x, y: p.y, off: p.off };
+  });
+  return { country, land, near, events, box };
 }
 
 /** Where the clock is, across one country's events. */
@@ -74,14 +75,36 @@ function readClock(events, p) {
   };
 }
 
-/** Fit a box into a band of the screen, and say how to scale it. */
+/** Fit a box into a band of the screen. */
 function frame(box, w, h, top, bottom) {
   const bh = (bottom - top) * h;
   const S = Math.min((w * 0.80) / Math.max(1e-6, box.w), (bh * 0.84) / Math.max(1e-6, box.h));
   return { x: box.x + box.w / 2, y: box.y + box.h / 2, S, cy: (top + bottom) / 2 * h };
 }
 
+// How far outside itself a country will follow an event before it stops:
+// far enough for a war next door, not far enough for Pearl Harbor.
+const LIMIT = 0.45;
+
+/** Pull a point in to where the map still has something to show. */
+function hold(box, x, y) {
+  const mx = box.w * LIMIT, my = box.h * LIMIT;
+  const cx = clamp(x, box.x - mx, box.x + box.w + mx);
+  const cy = clamp(y, box.y - my, box.y + box.h + my);
+  return { x: cx, y: cy, off: cx !== x || cy !== y };
+}
+
+/** The country's box, widened to take in a place outside it. */
+function reach(box, x, y) {
+  const x0 = Math.min(box.x, x), x1 = Math.max(box.x + box.w, x);
+  const y0 = Math.min(box.y, y), y1 = Math.max(box.y + box.h, y);
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+const yearOf = (t) => (t <= -100000 ? `${Math.round(-t / 10000) / 100}百万年前`
+  : t < 0 ? `前${-t}` : String(t));
 
 /* ── the engine ──────────────────────────────────────────────── */
 
@@ -91,12 +114,20 @@ export const atlas = {
   init(env) {
     // A seeded shuffle: the same night and task always draws the same
     // countries in the same order, so a reload does not start over.
-    const order = COUNTRIES.slice();
+    const order = CATALOG.slice();
     for (let i = order.length - 1; i > 0; i--) {
       const j = Math.floor(env.rng() * (i + 1));
       [order[i], order[j]] = [order[j], order[i]];
     }
-    return { order, built: new Map(), cam: null, was: -1 };
+    return { order, built: new Map(), loading: new Set(), cam: null, was: -1, said: '' };
+  },
+
+  /** Load a country's history and map, once. */
+  fetch(st, entry) {
+    if (st.built.has(entry.code) || st.loading.has(entry.code)) return;
+    st.loading.add(entry.code);
+    entry.load().then((c) => st.built.set(entry.code, build(c)))
+      .catch(() => st.loading.delete(entry.code));
   },
 
   draw(env) {
@@ -115,31 +146,32 @@ export const atlas = {
                                             : 'Inter, system-ui, "Hiragino Sans", sans-serif'}`;
 
     // ── which country, and how far into it ──
+    // Each country gets the whole of its history told, so the chapters
+    // divide the task evenly rather than by how much there is to say.
     const chapters = clamp(Math.round((clock.durSec || 1800) / CHAPTER_SEC), 1, st.order.length);
     const pp = clamp(clock.progress, 0, 0.999999);
     const ci = Math.min(chapters - 1, Math.floor(pp * chapters));
     const q = clamp(pp * chapters - ci);
     const country = st.order[ci % st.order.length];
-    let m = st.built.get(country.code);
-    if (!m) { m = build(country); st.built.set(country.code, m); }
+    const m = st.built.get(country.code);
+    // the next country is fetched while this one is still being read
+    this.fetch(st, country);
+    if (q > 0.3) this.fetch(st, st.order[(ci + 1) % st.order.length]);
     if (st.was !== ci) { st.cam = null; st.was = ci; }
+    if (!m) { waiting(ctx, w, h, U, country, clock, col, F); return; }
 
     const cl = readClock(m.events, q);
     const e = cl.event, nx = cl.next;
 
-    // ── the camera: in on the event, out to the whole country to travel ──
-    // The whole country stays on screen the whole time — that is the
-    // point of a map. Arriving at an event leans towards it and pushes in
-    // a little; travelling pulls back square.
-    // The corner buttons own the top right of the screen — about 64px of
-    // it — so the header never rises above them, however short the window.
-    const row1 = Math.max(h * 0.052, 32);
-    const row2 = Math.max(h * 0.105, 78);
-    const row3 = Math.max(h * 0.172, 112);
-    const MAP_TOP = Math.max(0.205, (row3 + Math.min(h, w) * 0.035) / h), MAP_BOT = 0.615;
-    const wide = frame(m.box, w, h, MAP_TOP, MAP_BOT);
+    // ── the camera ──
+    const row1 = Math.max(h * 0.050, 30);
+    const row2 = Math.max(h * 0.100, 74);
+    const MAP_TOP = Math.max(0.140, (row2 + U * 0.028) / h), MAP_BOT = 0.455;
+    // both the country and whatever is happening outside it
+    const seen = reach(reach(m.box, e.x, e.y), nx.x, nx.y);
+    const wide = frame(seen, w, h, MAP_TOP, MAP_BOT);
     const out = Math.sin(clamp(cl.travel) * Math.PI);
-    const intro = clamp(1 - q / 0.04);                 // establish the country first
+    const intro = clamp(1 - q / 0.035);                // establish the country first
     const t = easeInOut(clamp(cl.travel));
     const cx = lerp(e.x, nx.x, t), cy = lerp(e.y, nx.y, t);
     const zoom = Math.max(out, intro);                 // 1 = the whole country, square on
@@ -166,15 +198,14 @@ export const atlas = {
     bg.addColorStop(1, css([220, 30, 5]));
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
-    const wash = ctx.createRadialGradient(w / 2, h * 0.37, 0, w / 2, h * 0.37, Math.max(w, h) * 0.75);
-    wash.addColorStop(0, css(col, 0.09));
+    const wash = ctx.createRadialGradient(w / 2, h * 0.32, 0, w / 2, h * 0.32, Math.max(w, h) * 0.75);
+    wash.addColorStop(0, css(col, 0.08));
     wash.addColorStop(1, css(col, 0));
     ctx.fillStyle = wash;
     ctx.fillRect(0, 0, w, h);
 
     // One country gives way to the next. Only between chapters: the start
-    // and the end of the task itself are not transitions, and dimming them
-    // made the last minute of a task look like a fault.
+    // and the end of the task are not transitions.
     const inEdge = ci > 0 ? clamp(q / FADE) : 1;
     const outEdge = ci < chapters - 1 ? clamp((1 - q) / FADE) : 1;
     const fade = clock.state === 'dormant' ? 1 : 0.22 + 0.78 * Math.min(inEdge, outEdge);
@@ -231,13 +262,22 @@ export const atlas = {
     // everything already gone past stays on the map
     for (let i = 0; i <= cl.index; i++) {
       const ev = m.events[i];
-      const age = clamp((cl.index - i) / 10);
+      const age = clamp((cl.index - i) / 12);
       ctx.fillStyle = css(coast, 0.95 - age * 0.55, 16);
       ctx.beginPath(); ctx.arc(ev.x, ev.y, px(2.4), 0, TAU); ctx.fill();
     }
 
     // and the one being read
     const live = clamp(1 - cl.travel * 1.3);
+    if (e.off) {
+      // the place is beyond what this map shows; the mark sits at the edge
+      ctx.globalAlpha = fade * 0.9;
+      ctx.strokeStyle = css(col, 0.5, 20);
+      ctx.lineWidth = px(1.4);
+      ctx.setLineDash([px(3), px(4)]);
+      ctx.beginPath(); ctx.arc(e.x, e.y, px(16), 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+    }
     const pulse = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 2.1);
     ctx.globalAlpha = fade * (0.3 + live * 0.7);
     ctx.fillStyle = css(col, 0.98, 26);
@@ -252,10 +292,21 @@ export const atlas = {
     }
     ctx.restore();
 
+    // The land around the country is cut to a rectangle; feathering the
+    // top and bottom of the band keeps that cut from reading as a coast.
+    const bandTop = h * MAP_TOP, bandH = h * (MAP_BOT - MAP_TOP);
+    for (const [y0, y1] of [[bandTop, bandTop + bandH * 0.12], [bandTop + bandH, bandTop + bandH * 0.88]]) {
+      const g2 = ctx.createLinearGradient(0, y0, 0, y1);
+      g2.addColorStop(0, css(sea, 1));
+      g2.addColorStop(1, css(sea, 0));
+      ctx.fillStyle = g2;
+      ctx.fillRect(0, Math.min(y0, y1), w, Math.abs(y1 - y0));
+    }
+
     // ── the name of the place, beside its mark ──
     const sp = screen(e.x, e.y);
-    if (live > 0.04 && fade > 0.2 && sp.y > h * MAP_TOP && sp.y < h * MAP_BOT) {
-      const size = Math.max(12, U * 0.034);
+    if (live > 0.04 && fade > 0.2 && sp.y > h * MAP_TOP + 8 && sp.y < h * MAP_BOT - 8) {
+      const size = Math.max(12, U * 0.032);
       ctx.font = F(600, size);
       ctx.textBaseline = 'middle';
       const right = sp.x > w * 0.58;
@@ -263,101 +314,74 @@ export const atlas = {
       const dx = right ? -16 : 16;
       ctx.lineWidth = 4;
       ctx.lineJoin = 'round';
-      ctx.strokeStyle = css([214, 26, 8], 0.85 * live * fade);
-      ctx.strokeText(e.title, sp.x + dx, sp.y);
+      ctx.strokeStyle = css(sea, 0.85 * live * fade);
+      ctx.strokeText(e.place, sp.x + dx, sp.y);
       ctx.fillStyle = css(ink, 0.95 * live * fade);
-      ctx.fillText(e.title, sp.x + dx, sp.y);
+      ctx.fillText(e.place, sp.x + dx, sp.y);
     }
 
-    // ── which task, and how much of it is left ──
-    // The right of the first line belongs to the corner buttons, so the
-    // clock goes on the second one.
-    ctx.globalAlpha = 1;
+    // ── which task this is ──
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    ctx.font = F(600, U * 0.032);
+    ctx.globalAlpha = 1;
+    ctx.font = F(600, U * 0.028);
     ctx.letterSpacing = '0.16em';
-    ctx.fillStyle = css(col, 0.95, 16);
+    ctx.fillStyle = css(col, 0.85, 14);
     ctx.fillText(clock.taskName, w * 0.08, row1);
     ctx.letterSpacing = '0px';
 
-    const dotY = row2 - Math.min(h, w) * 0.018, gap = U * 0.036;
-    for (let i = 0; i < clock.tasks.length; i++) {
-      const tk = clock.tasks[i];
-      const x = w * 0.08 + U * 0.012 + i * gap;
-      const here = i === clock.taskIndex;
-      ctx.beginPath();
-      ctx.arc(x, dotY, U * (here ? 0.012 : 0.008), 0, TAU);
-      ctx.fillStyle = tk.done ? css(tk.color, 0.9) : here ? css(col, 0.95) : css(dim, 1, 12);
-      ctx.fill();
-    }
-
-    const dormant = clock.state === 'dormant';
-    ctx.textAlign = 'right';
-    const left = hms(dormant ? clock.startsInSec : clock.remainingSec);
-    ctx.font = F(400, U * 0.048, true);
-    const leftW = ctx.measureText(left).width;
-    ctx.fillStyle = css(ink, 0.92);
-    ctx.fillText(left, w * 0.92, row2);
-    ctx.font = F(400, U * 0.026);
-    ctx.fillStyle = css(ink, 0.40);
-    ctx.fillText(dormant ? '開始まで' : 'のこり', w * 0.92 - leftW - U * 0.022, row2);
-
     // ── which country ──
     ctx.globalAlpha = fade;
-    ctx.textAlign = 'left';
-    ctx.font = F(600, U * 0.058);
+    ctx.font = F(600, U * 0.056);
     ctx.fillStyle = css(ink, 0.95);
-    ctx.fillText(country.ja, w * 0.08, row3);
+    ctx.fillText(country.ja, w * 0.08, row2);
     const nameW = ctx.measureText(country.ja).width;
     ctx.font = F(400, U * 0.025);
     ctx.letterSpacing = '0.20em';
     ctx.fillStyle = css(ink, 0.32);
-    ctx.fillText(country.en, w * 0.08 + nameW + U * 0.026, row3);
+    ctx.fillText(country.en, w * 0.08 + nameW + U * 0.026, row2);
     ctx.letterSpacing = '0px';
-    if (chapters > 1) {
-      ctx.textAlign = 'right';
-      ctx.font = F(400, U * 0.026, true);
-      ctx.fillStyle = css(ink, 0.26);
-      ctx.fillText(`${ci + 1}/${chapters}`, w * 0.92, row3);
-    }
+    ctx.textAlign = 'right';
+    ctx.font = F(400, U * 0.024, true);
+    ctx.fillStyle = css(ink, 0.26);
+    ctx.fillText(chapters > 1 ? `${ci + 1}/${chapters}` : '', w * 0.92, row2);
     ctx.globalAlpha = 1;
 
-    // ── the year, and what happened ──
-    // Sized against the band it has to fit in, not the width: on a wide
-    // screen U is large but the space under the map is not.
+    // ── the year, what happened, where, and what it was ──
     const T = Math.min(U, h * 0.46);
     const yearY = h * MAP_BOT + T * 0.135;
     ctx.textAlign = 'left';
-    ctx.font = F(300, T * 0.085, true);
+    ctx.font = F(300, T * 0.082, true);
     ctx.fillStyle = css(ink, 0.9 * fade);
-    const year = e.t <= -100000
-      ? `${Math.round(-e.t / 10000) / 100}百万年前`
-      : e.t < 0 ? `前${-e.t}` : String(e.t);
-    ctx.fillText(year, w * 0.08, yearY);
-    // none of this reaches a screen reader from a canvas, so leave a line
-    // for the page to read out
-    st.said = `${country.ja}　${year}　${e.title}。${e.note}。`;
+    ctx.fillText(yearOf(e.t), w * 0.08, yearY);
 
-    const et = fade * (0.42 + 0.58 * clamp(1 - cl.travel * 1.6));
-    if (et > 0.02) {
-      ctx.globalAlpha = Math.min(1, et);
-      ctx.font = F(600, T * 0.046);
-      ctx.fillStyle = css(ink, 0.95);
-      ctx.fillText(e.title, w * 0.08, yearY + T * 0.125);
-      ctx.font = F(400, T * 0.033);
-      ctx.fillStyle = css(ink, 0.56);
-      wrap(ctx, e.note, w * 0.08, yearY + T * 0.225, w * 0.84, T * 0.047);
-    }
+    // the place, set to the right of the year
+    const yw = ctx.measureText(yearOf(e.t)).width;
+    ctx.font = F(400, T * 0.030);
+    ctx.fillStyle = css(ink, 0.38 * fade);
+    ctx.fillText(e.place, w * 0.08 + yw + T * 0.035, yearY);
+
+    const et = fade * (0.45 + 0.55 * clamp(1 - cl.travel * 1.6));
+    ctx.globalAlpha = Math.min(1, et);
+    ctx.font = F(600, T * 0.049);
+    ctx.fillStyle = css(ink, 0.95);
+    ctx.fillText(e.title, w * 0.08, yearY + T * 0.115);
+    // the account is the point of the screen, so it gets the room
+    ctx.font = F(400, T * 0.0375);
+    ctx.fillStyle = css(ink, 0.68);
+    wrap(ctx, e.text, w * 0.08, yearY + T * 0.215, w * 0.84, T * 0.058);
     ctx.globalAlpha = 1;
 
-    // ── the time, plainly, at the foot of the screen ──
-    foot(ctx, w, h, U, clock, col, ink, dim, F);
+    // ── the history of this country, as a line ──
+    timeline(ctx, w, h, U, m.events, cl, q, ink, dim, col, F, fade);
+
+    // the sentence the page reads out, since a canvas says nothing
+    st.said = `${country.ja}　${yearOf(e.t)}　${e.place}　${e.title}。${e.text}`;
 
     // ── held, and done ──
     if (clock.state === 'paused') {
       ctx.textAlign = 'center';
-      const gy = h * 0.565, s = U * 0.024;
+      const gy = h * (MAP_BOT - 0.05), s = U * 0.024;
       const label = '一時停止中　タップで再開';
       ctx.font = F(500, U * 0.034);
       const pw = ctx.measureText(label).width + s * 6.2, ph = s * 3.2;
@@ -376,90 +400,101 @@ export const atlas = {
       ctx.textBaseline = 'alphabetic';
     }
     if (clock.state === 'closing') {
-      const veil = ctx.createRadialGradient(w / 2, h * 0.37, 0, w / 2, h * 0.37, Math.max(w, h) * 0.6);
-      veil.addColorStop(0, css([214, 26, 8], 0.86));
-      veil.addColorStop(1, css([214, 26, 8], 0.55));
+      const veil = ctx.createRadialGradient(w / 2, h * 0.34, 0, w / 2, h * 0.34, Math.max(w, h) * 0.6);
+      veil.addColorStop(0, css(sea, 0.88));
+      veil.addColorStop(1, css(sea, 0.58));
       ctx.fillStyle = veil;
       ctx.fillRect(0, h * MAP_TOP, w, h * (MAP_BOT - MAP_TOP));
       ctx.textAlign = 'center';
       ctx.font = F(500, U * 0.052);
       ctx.fillStyle = css(col, 0.95, 18);
-      ctx.fillText('おつかれさま', w / 2, h * 0.30);
-      ctx.font = F(400, U * 0.032);
-      ctx.fillStyle = css(ink, 0.5);
-      ctx.fillText(`${clock.taskName}　${hms(clock.durSec)}`, w / 2, h * 0.345);
+      ctx.fillText('おつかれさま', w / 2, h * 0.225);
+      ctx.font = F(400, U * 0.030);
+      ctx.fillStyle = css(ink, 0.45);
+      ctx.fillText(clock.taskName, w / 2, h * 0.263);
     }
   },
 
-  /** The completion mark sits in the middle of the map, which is cleared for it. */
+  /** The completion mark sits in the middle of the map, which clears for it. */
   tapSpot(env) {
     const { w, h } = env;
-    return { x: w / 2, y: h * 0.44, r: Math.max(30, Math.min(44, Math.min(w, h) * 0.078)) };
+    return { x: w / 2, y: h * 0.325, r: Math.max(30, Math.min(44, Math.min(w, h) * 0.078)) };
   },
 
   anchors(env) {
     const { w, h } = env;
-    const y = h * 0.44, x = w / 2;
+    const y = h * 0.325, x = w / 2;
     const path = [];
     for (let i = 0; i <= 6; i++) path.push({ x: x - w * 0.16 + (i / 6) * w * 0.16, y });
     return { head: path[0], rest: { x, y }, path };
   }
 };
 
-/**
- * The bar and the strip from the plain timer, kept because they answer
- * the only question the map cannot: how much of this task is left.
- */
-function foot(ctx, w, h, U, clock, col, ink, dim, F) {
-  const p = clamp(clock.progress);
-  const bx = w * 0.08, bw = w * 0.84, by = h * 0.845, bh = Math.max(5, U * 0.015);
-  ctx.fillStyle = css(dim, 1);
-  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, bh / 2); ctx.fill();
-  if (p > 0.001) {
-    ctx.fillStyle = css(col, 1);
-    ctx.beginPath(); ctx.roundRect(bx, by, Math.max(bh, bw * p), bh, bh / 2); ctx.fill();
-    ctx.fillStyle = css(col, 1, 26);
-    ctx.beginPath(); ctx.arc(bx + bw * p, by + bh / 2, bh * 0.95, 0, TAU); ctx.fill();
-  }
-  ctx.font = F(400, U * 0.032, true);
+/** The half-second before a country's history has arrived. */
+function waiting(ctx, w, h, U, country, clock, col, F) {
+  const ink = [212, 12, 92];
+  const bg = ctx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, css([214, 26, 8]));
+  bg.addColorStop(1, css([220, 30, 5]));
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
   ctx.textAlign = 'left';
-  ctx.fillStyle = css(ink, 0.55);
-  ctx.fillText(hms(clock.elapsedSec), bx, by + bh * 3.4);
-  ctx.textAlign = 'right';
-  ctx.fillText('-' + hms(clock.remainingSec), bx + bw, by + bh * 3.4);
-
-  // the whole night: six blocks, sized by how long each task runs
-  const ny = h * 0.935, nh = Math.max(4, U * 0.012);
-  let nx = bx;
-  for (let i = 0; i < clock.tasks.length; i++) {
-    const t = clock.tasks[i];
-    const seg = bw * (t.durSec / clock.nightTotal);
-    const pad = i ? 2 : 0;
-    const done = i < clock.taskIndex || t.done;
-    ctx.fillStyle = done ? css(t.color, 0.8) : i === clock.taskIndex ? css(dim, 1, 6) : css(dim, 1);
-    ctx.beginPath(); ctx.roundRect(nx + pad, ny, Math.max(2, seg - pad), nh, nh / 2); ctx.fill();
-    if (i === clock.taskIndex && clock.state !== 'dormant') {
-      ctx.fillStyle = css(t.color, 0.9);
-      ctx.beginPath(); ctx.roundRect(nx + pad, ny, Math.max(2, (seg - pad) * p), nh, nh / 2); ctx.fill();
-    }
-    nx += seg;
-  }
-  ctx.fillStyle = css(ink, 0.85);
-  const mx = bx + bw * clamp(clock.nightProgress);
-  ctx.beginPath();
-  ctx.moveTo(mx, ny - nh * 0.5);
-  ctx.lineTo(mx + nh * 0.42, ny - nh * 1.3);
-  ctx.lineTo(mx - nh * 0.42, ny - nh * 1.3);
-  ctx.closePath(); ctx.fill();
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = F(600, U * 0.028);
+  ctx.letterSpacing = '0.16em';
+  ctx.fillStyle = css(col, 0.85, 14);
+  ctx.fillText(clock.taskName, w * 0.08, Math.max(h * 0.050, 30));
+  ctx.letterSpacing = '0px';
+  ctx.font = F(600, U * 0.056);
+  ctx.fillStyle = css(ink, 0.5);
+  ctx.fillText(country.ja, w * 0.08, Math.max(h * 0.100, 74));
 }
 
-/** Wrap on Japanese punctuation as well as spaces. */
+/**
+ * One notch per event, evenly spaced, with the first and last years named.
+ * It says two things at once: how far through this country's history the
+ * screen is, and therefore how much of the task is left — without ever
+ * putting a number on the second.
+ */
+function timeline(ctx, w, h, U, events, cl, q, ink, dim, col, F, fade) {
+  const n = events.length;
+  const x0 = w * 0.08, x1 = w * 0.92, y = h * 0.945;
+  const step = (x1 - x0) / Math.max(1, n - 1);
+
+  ctx.globalAlpha = fade;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = css(dim, 1, 6);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+
+  const thin = step < 4;
+  for (let i = 0; i < n; i++) {
+    if (thin && i % 2 && i !== cl.index) continue;
+    const x = x0 + step * i, on = i <= cl.index;
+    ctx.strokeStyle = on ? css(ink, 0.5) : css(ink, 0.16);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x, y - (on ? 5 : 3)); ctx.lineTo(x, y + (on ? 5 : 3));
+    ctx.stroke();
+  }
+  const hx = x0 + step * (cl.index + Math.min(1, cl.travel));
+  ctx.fillStyle = css(col, 1, 16);
+  ctx.beginPath(); ctx.arc(hx, y, 4, 0, TAU); ctx.fill();
+
+  ctx.font = F(400, U * 0.024, true);
+  ctx.fillStyle = css(ink, 0.30);
+  ctx.textAlign = 'left';
+  ctx.fillText(yearOf(events[0].t), x0, y + U * 0.055);
+  ctx.textAlign = 'right';
+  ctx.fillText(yearOf(events[n - 1].t), x1, y + U * 0.055);
+  ctx.globalAlpha = 1;
+}
+
+/** Wrap on width, character by character: Japanese has no spaces. */
 function wrap(ctx, text, x, y, maxW, lh) {
   let line = '', ly = y;
   const put = () => { ctx.fillText(line, x, ly); line = ''; ly += lh; };
   for (const ch of String(text)) {
-    // Japanese has no spaces, so measure a character at a time, and never
-    // start a line with a mark that may not begin one
     if (ctx.measureText(line + ch).width > maxW && line && !'、。」）'.includes(ch)) put();
     line += ch;
   }
