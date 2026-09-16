@@ -96,13 +96,15 @@ export const topic = {
     const e = R[g.index];
     const reign = Math.max(1, e[2] - e[1]);
     // a long reign opens the view; a year on the throne closes it right in
-    const span = clamp(reign * 5.5, 18, 105);
+    // never so close that only one reign is on screen: the point is to see
+    // this one against its neighbours
+    const span = clamp(reign * 3.4 + 34, 44, 135);
     return { x: g.year, y: 0, S: w / span };
   },
 
   draw(g) {
     const { ctx, pal } = g;
-    const H = g.px(g.h * 0.30), y0 = -H / 2;
+    const H = g.px(g.h * 0.34), y0 = -H / 2;
     const now = g.year;
 
     // the whole span, unlit, so the end is always in view on the strip
@@ -172,13 +174,13 @@ export const topic = {
     ctx.strokeStyle = css([40, 80, 70], 0.9);
     ctx.lineWidth = g.px(1.6);
     ctx.beginPath();
-    ctx.moveTo(now, y0 - g.px(18)); ctx.lineTo(now, y0 + H + g.px(4));
+    ctx.moveTo(now, y0 - g.px(8)); ctx.lineTo(now, y0 + H + g.px(4));
     ctx.stroke();
 
     // the house being lived through
     const house = R[g.index][3];
     ctx.save();
-    ctx.translate(now, y0 - g.px(34));
+    ctx.translate(now, y0 - g.px(22));
     ctx.scale(g.px(1), g.px(1));
     ctx.textAlign = 'center';
     ctx.font = `400 ${Math.round(g.h * 0.019)}px Inter, system-ui, sans-serif`;

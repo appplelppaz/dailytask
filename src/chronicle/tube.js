@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { clamp, css, lerp, TAU, makeRng } from '../util.js';
-import { fitTo, growBox, path } from '../history.js';
+import { fitTo, growBox, path } from '../chronicle.js';
 
 const P = (x, y) => ({ x, y });
 

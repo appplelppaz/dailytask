@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { clamp, css, lerp, TAU } from '../util.js';
-import { fitTo } from '../history.js';
+import { fitTo } from '../chronicle.js';
 
 // [atomic number, symbol, year, family, who]
 const E = [

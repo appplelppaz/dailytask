@@ -61,9 +61,9 @@ import { Scene } from './src/scene.js';
 import { DESIGNS } from './src/designs.js';
 import { STAGES } from './src/painting.js';
 import { SUBJECTS } from './src/paintings/index.js';
-import { TOPICS } from './src/history/index.js';
+import { TOPICS } from './src/chronicle/index.js';
 
-const works = DESIGNS.filter((d) => d.engine === 'painting' || d.engine === 'history');
+const works = DESIGNS.filter((d) => d.engine === 'painting' || d.engine === 'chronicle');
 let which = 0;
 const scene = new Scene(document.getElementById('stage'));
 window.__preview = { scene };
@@ -75,7 +75,7 @@ function load(i) {
   const d = works[which];
   scene.setDesign(d, 'preview:' + d.id);
   scene.completedAt = 0;
-  const subj = d.engine === 'history' ? TOPICS[d.prm.topic] : SUBJECTS[d.prm.subject];
+  const subj = d.engine === 'chronicle' ? TOPICS[d.prm.topic] : SUBJECTS[d.prm.subject];
   document.getElementById('label').textContent = subj
     ? (subj.artist ? `${subj.title} — ${subj.artist}, ${subj.year}` : `${subj.title}　${subj.subtitle || ''}`)
     : d.name;

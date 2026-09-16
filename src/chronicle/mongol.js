@@ -14,7 +14,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { clamp, css, lerp, TAU, makeRng } from '../util.js';
-import { fitTo, growBox } from '../history.js';
+import { fitTo, growBox } from '../chronicle.js';
 
 // A coarse Eurasia: x runs from the Atlantic to the Pacific, y from the
 // Arctic to the Indian Ocean. Enough of a shape to know where you are.
