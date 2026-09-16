@@ -47,11 +47,11 @@ let countShown = 0;        // the number on screen, so each one beats once
 // the repository, but a routine you do at the same time every evening
 // wants the same picture every evening — the point is to read it without
 // thinking, not to be surprised by it.
-const TIMER = DESIGNS.find((d) => d.engine === 'timer');
+const SCREEN = DESIGNS.find((d) => d.engine === 'atlas');
 
 /** Which world belongs to this task on this night. */
 function designFor() {
-  return TIMER;
+  return SCREEN;
 }
 
 /** #rrggbb from the record's palette, as the [h,s,l] the canvas wants. */
@@ -208,9 +208,10 @@ function tick() {
   const said = c.state === 'dormant' ? `${c.taskName} 開始まで ${hms(c.startsInSec)}`
     : c.state === 'closing' ? `${c.taskName} 完了。チェックをタップしてください`
     : `${c.taskName} のこり ${hms(c.remainingSec)}`;
+  const world = scene.env && scene.env.st && scene.env.st.said;
   stage.setAttribute('aria-label', paused
     ? `${said}。一時停止中。もう一度押すと再開します`
-    : `${said}。押すと一時停止します`);
+    : `${said}。${world || ''}押すと一時停止します`);
   stage.setAttribute('aria-pressed', String(paused));
 
   control.setSpec(scene.affordanceSpec());

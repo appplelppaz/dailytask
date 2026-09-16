@@ -141,6 +141,8 @@ export class Scene {
    * have to work out what this world wants from them.
    */
   tapSpot() {
+    const own = this.engine && this.engine.tapSpot && this.engine.tapSpot(this.env);
+    if (own) return own;
     const w = this.w, h = this.h;
     const r = Math.max(30, Math.min(44, Math.min(w, h) * 0.078));
     return { x: w / 2, y: Math.min(h * 0.90, h - (r + 28)), r };

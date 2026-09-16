@@ -14,6 +14,7 @@ import { clamp, lerp, css, glow, TAU, sweepCoord, smooth, easeOut, breathe, make
 import { painting } from './painting.js';
 import { chronicle } from './chronicle.js';
 import { timer } from './timer.js';
+import { atlas } from './atlas.js';
 
 // ── shared helpers ───────────────────────────────────────────
 
@@ -1652,4 +1653,4 @@ const radial = {
   }
 };
 
-export const ENGINES = { fog, trail, front, lines, strand, liquid, caustic, swarm, depth, radial, painting, chronicle, timer };
+export const ENGINES = { fog, trail, front, lines, strand, liquid, caustic, swarm, depth, radial, painting, chronicle, timer, atlas };
