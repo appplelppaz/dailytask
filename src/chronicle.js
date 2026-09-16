@@ -46,20 +46,24 @@ export function readClock(events, p) {
     index: i,
     since: f,                                   // 0..1 through this slot
     fresh: clamp(1 - f / HOLD),                 // 1 at the moment it lands
+    travel,                                     // 0 on the event, 1 at the next
     year: lerp(a.t, b.t, travel),
-    // once we have travelled most of the way, the caption belongs to where
-    // we are arriving, not where we left
-    event: travel > 0.86 ? b : a,
+    event: p >= 0.9995 ? b : a,
     next: b
   };
 }
 
 /* ── camera ──────────────────────────────────────────────────── */
 
-export function fitTo(box, w, h, padX = 0.86, padY = 0.68) {
+/**
+ * Frame a box into the stage — the part of the screen below the year and
+ * the caption. `cy` is where the middle of the box should land, as a
+ * fraction of the height.
+ */
+export function fitTo(box, w, h, padX = 0.88, padY = 0.58, cy = 0.605) {
   const bw = Math.max(1e-4, box.w), bh = Math.max(1e-4, box.h);
   const S = Math.min((w * padX) / bw, (h * padY) / bh);
-  return { x: box.x + bw / 2, y: box.y + bh / 2, S };
+  return { x: box.x + bw / 2, y: box.y + bh / 2 + (h / 2 - h * cy) / S, S };
 }
 
 export function growBox(box, x, y, pad = 0) {
@@ -93,7 +97,7 @@ export const chronicle = {
     const g = {
       ctx, w, h, p, time, reduced, prm,
       year: clock.year, index: clock.index, since: clock.since, fresh: clock.fresh,
-      event: clock.event, next: clock.next, events, pal,
+      travel: clock.travel, event: clock.event, next: clock.next, events, pal,
       cache: (key, make) => {
         if (!st.cache.has(key)) st.cache.set(key, make());
         return st.cache.get(key);
@@ -127,6 +131,17 @@ export const chronicle = {
     g.cam = st.cam;
     topic.draw(g);
     ctx.restore();
+
+    // Lettering is laid over the picture rather than inside the camera:
+    // type wants to be a fixed size on the screen, and labels can only be
+    // kept from colliding once you know where they land in pixels.
+    if (topic.overlay) {
+      g.screen = (x, y) => ({
+        x: (x - st.cam.x) * st.cam.S + w / 2,
+        y: (y - st.cam.y) * st.cam.S + h / 2
+      });
+      topic.overlay(g);
+    }
 
     chrome(g, topic, clock, p);
   },
@@ -179,13 +194,16 @@ function chrome(g, topic, clock, p) {
   ctx.fillStyle = css(pal.ink, 0.92);
   ctx.fillText(label, bx, by + Math.min(w, h) * 0.135);
 
-  // what just happened
+  // What just happened. It fades as the clock leaves it behind, so the
+  // year on the screen and the words under it never disagree.
   const e = clock.event;
   if (e && e.label) {
-    const fade = clamp(0.35 + clock.fresh * 0.65);
-    ctx.font = `400 ${Math.round(Math.min(w, h) * 0.036)}px Inter, system-ui, sans-serif`;
-    ctx.fillStyle = css(pal.ink, 0.55 + fade * 0.4);
-    wrap(ctx, e.label, bx, by + Math.min(w, h) * 0.20, bw, Math.min(w, h) * 0.05);
+    const a = clamp(1 - clock.travel * 1.5);
+    if (a > 0.02) {
+      ctx.font = `400 ${Math.round(Math.min(w, h) * 0.036)}px Inter, system-ui, sans-serif`;
+      ctx.fillStyle = css(pal.ink, 0.28 + a * 0.62);
+      wrap(ctx, e.label, bx, by + Math.min(w, h) * 0.20, bw, Math.min(w, h) * 0.05);
+    }
   }
   ctx.restore();
 }

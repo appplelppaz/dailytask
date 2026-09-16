@@ -76,7 +76,9 @@ export const topic = {
     const { w, h } = g;
     // the road unrolls past a fixed viewer; it closes in at each station
     const span = lerp(9.5, 4.6, Math.pow(g.fresh, 0.8));
-    return { x: g.year + span * 0.18, y: roadY(g.year) * 0.35, S: w / span };
+    const S = w / span;
+    // the road sits in the lower part of the screen, under the caption
+    return { x: g.year + span * 0.18, y: roadY(g.year) * 0.35 + (h / 2 - h * 0.60) / S, S };
   },
 
   backdrop(g) {

@@ -114,14 +114,14 @@ export const topic = {
   focus(g) {
     const { w, h } = g;
     const board = { x: 0, y: 0, w: 18 * (CW + GAP), h: 10.6 * (CW + GAP) };
-    const wide = fitTo(board, w, h, 0.94, 0.62);
+    const wide = fitTo(board, w, h, 0.94, 0.56);
     const e = g.event;
     if (!e || g.fresh < 0.01) return wide;
     // lean in on the cell that just filled
     const [c, r] = cell(e.z);
     // lean in, but never so far that the shape of the board is lost
     const near = fitTo({ x: (c - 5.5) * (CW + GAP), y: (r - 3.6) * (CW + GAP),
-                         w: 10 * (CW + GAP), h: 7 * (CW + GAP) }, w, h, 0.9, 0.55);
+                         w: 10 * (CW + GAP), h: 7 * (CW + GAP) }, w, h, 0.9, 0.5);
     const k = Math.pow(g.fresh, 0.8) * 0.6;
     return { x: lerp(wide.x, near.x, k), y: lerp(wide.y, near.y, k), S: lerp(wide.S, near.S, k) };
   },

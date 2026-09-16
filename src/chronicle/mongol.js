@@ -112,10 +112,10 @@ export const topic = {
     // and opens out as the reach of the empire does
     let box = { x: 0.62, y: 0.245, w: 0.10, h: 0.07 };
     for (const c of CITIES) if (g.seen(c[3])) box = growBox(box, c[1], c[2], 0.05);
-    const wide = fitTo(box, w, h, 0.9, 0.56);
+    const wide = fitTo(box, w, h, 0.9, 0.52);
     const e = g.event;
     if (e && e.city && g.fresh > 0.01) {
-      const near = fitTo({ x: e.city[1] - 0.10, y: e.city[2] - 0.075, w: 0.20, h: 0.15 }, w, h, 0.8, 0.5);
+      const near = fitTo({ x: e.city[1] - 0.10, y: e.city[2] - 0.075, w: 0.20, h: 0.15 }, w, h, 0.8, 0.46);
       const k = Math.pow(g.fresh, 0.75) * 0.6;
       return { x: lerp(wide.x, near.x, k), y: lerp(wide.y, near.y, k),
                S: lerp(wide.S, Math.min(near.S, wide.S * 2.4), k) };
