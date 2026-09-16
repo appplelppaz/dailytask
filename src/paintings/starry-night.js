@@ -34,108 +34,133 @@ function scene(F) {
   const m = Math.min(F.w, F.h);
   const S = {
     px, py, m, F,
-    horizon: py(0.775),
-    moon:   { x: px(0.858), y: py(0.128), r: m * 0.062 },
-    vortA:  { x: px(0.47), y: py(0.35), r: m * 0.31, spin: 1 },
-    vortB:  { x: px(0.665), y: py(0.30), r: m * 0.175, spin: -1 },
-    vortC:  { x: px(0.14), y: py(0.60), r: m * 0.14, spin: -1 },
-    vortD:  { x: px(0.86), y: py(0.62), r: m * 0.12, spin: 1 },
-    cypress:{ x: px(0.155), base: py(1.06), top: py(0.085), w: m * 0.105 },
-    spire:  { x: px(0.47), base: py(0.79), h: F.h * 0.205, w: m * 0.017 },
+    horizon: py(0.735),
+    moon:   { x: px(0.845), y: py(0.115), r: m * 0.058 },
+    // the two eyes of the great swirl, and the smaller turns around them
+    vorts: [
+      { x: px(0.40), y: py(0.345), r: m * 0.185, a: 1.75, spin: 1 },
+      { x: px(0.655), y: py(0.295), r: m * 0.125, a: -1.15, spin: -1 },
+      { x: px(0.155), y: py(0.60), r: m * 0.13, a: -0.24, spin: -1 },
+      { x: px(0.87), y: py(0.48), r: m * 0.12, a: 0.2, spin: 1 },
+      { x: px(0.70), y: py(0.62), r: m * 0.11, a: -0.18, spin: -1 }
+    ],
+    cypress:  { x: px(0.205), base: py(1.06), top: py(0.055), w: m * 0.088 },
+    cypress2: { x: px(0.325), base: py(1.06), top: py(0.415), w: m * 0.05 },
+    spire:  { x: px(0.545), base: py(0.75), h: F.h * 0.205, w: m * 0.0105 },
     stars: [
-      [0.085, 0.085, 1.0], [0.225, 0.20, 0.62], [0.325, 0.065, 0.72],
-      [0.615, 0.10, 0.66], [0.70, 0.225, 0.78], [0.925, 0.335, 0.6],
-      [0.79, 0.44, 0.56], [0.10, 0.345, 0.54], [0.285, 0.50, 0.5],
-      [0.565, 0.565, 0.46], [0.945, 0.585, 0.44]
+      [0.075, 0.075, 1.0], [0.215, 0.185, 0.72], [0.325, 0.055, 0.66],
+      [0.45, 0.095, 0.58], [0.60, 0.115, 0.52], [0.685, 0.215, 0.76],
+      [0.06, 0.345, 0.60], [0.135, 0.435, 0.78], [0.335, 0.465, 1.05],
+      [0.83, 0.335, 0.62], [0.925, 0.545, 0.5]
     ]
   };
-  S.starPts = S.stars.map(([u, v, k]) => ({ x: px(u), y: py(v), r: m * 0.031 * k }));
+  S.starPts = S.stars.map(([u, v, k]) => ({ x: px(u), y: py(v), r: m * 0.036 * k }));
   return S;
 }
 
 const HOUSES = [
-  [0.040, 0.064, 0.050], [0.108, 0.044, 0.038], [0.166, 0.074, 0.056],
-  [0.238, 0.050, 0.042], [0.300, 0.066, 0.052], [0.366, 0.042, 0.036],
-  [0.424, 0.072, 0.054], [0.536, 0.052, 0.044], [0.598, 0.068, 0.054],
-  [0.668, 0.044, 0.038], [0.726, 0.078, 0.058], [0.798, 0.050, 0.042],
-  [0.858, 0.066, 0.052], [0.926, 0.044, 0.038], [0.984, 0.062, 0.050]
+  [0.330, 0.038, 0.030], [0.378, 0.030, 0.024], [0.424, 0.044, 0.034],
+  [0.478, 0.032, 0.026], [0.612, 0.046, 0.036], [0.662, 0.032, 0.026],
+  [0.706, 0.040, 0.032], [0.760, 0.030, 0.024], [0.806, 0.048, 0.038],
+  [0.862, 0.034, 0.028], [0.910, 0.042, 0.032], [0.962, 0.030, 0.026]
 ];
 
 /* ── the colours on the palette ──────────────────────────────── */
 
-// the sky, dark to light: prussian, ultramarine, cobalt, cerulean, and
-// then through blue-green and pale green to a warm cream
+// The sky is a luminous night, not a black one: cobalt through the whole
+// middle of the ramp, deep ultramarine in the troughs, and a cream that is
+// warm at the top.
 const SKY_RAMP = [
-  [231, 62, 11], [228, 64, 17], [225, 60, 24], [220, 56, 32],
-  [214, 52, 40], [206, 46, 49], [196, 40, 58], [184, 33, 65],
-  [168, 26, 71], [136, 18, 78], [54, 22, 88]
+  [232, 60, 20], [229, 60, 26], [226, 58, 32], [222, 56, 39],
+  [218, 52, 46], [212, 46, 54], [206, 40, 62], [199, 33, 70],
+  [190, 25, 78], [104, 16, 85], [54, 24, 90]
 ];
-// the passages where the blue turns green — Van Gogh's viridian
-const GREENS = [[172, 32, 58], [160, 28, 66], [148, 22, 72], [126, 18, 76]];
-// what the stars spill into the sky around them
-const GOLDS = [[50, 78, 68], [46, 66, 76], [44, 50, 84], [42, 88, 58]];
+const GREENS = [[186, 30, 60], [170, 26, 68], [150, 20, 75], [120, 16, 80]];
+const GOLDS = [[52, 72, 74], [50, 60, 82], [48, 46, 88], [46, 84, 66]];
 
 /**
- * Direction of the paint. A slow undulation across the whole canvas,
- * bent around each vortex by how close it is.
+ * The sky as a stream function. Its contour lines are the lines the brush
+ * follows, and the value runs light-dark-light along the gradient — which
+ * is what makes the picture's sky a set of banded waves rather than a
+ * smooth field. Each vortex is a hill in the function, so the contours
+ * close around it and the brush turns.
  */
-function flowAt(S, x, y) {
-  const base = 0.12
-    + Math.sin(x * 0.0045 + y * 0.0022) * 0.46
-    + Math.sin(y * 0.0092 - x * 0.0012) * 0.4
-    + Math.sin(x * 0.0115 + 1.7) * 0.17
-    + Math.sin(y * 0.019 + 0.6) * 0.1;
-  let ax = Math.cos(base), ay = Math.sin(base);
-  for (const v of [S.vortA, S.vortB, S.vortC, S.vortD]) {
-    const dx = x - v.x, dy = (y - v.y) / 0.66;
-    const d = Math.hypot(dx, dy);
-    if (d > v.r * 1.9) continue;
-    const pull = Math.pow(clamp(1 - d / (v.r * 1.9)), 1.4) * 2.6;
-    const t = Math.atan2(dy, dx) + Math.PI / 2 * v.spin;
-    ax += Math.cos(t) * pull;
-    ay += Math.sin(t) * pull * 0.66;
+function psi(S, x, y) {
+  const F = S.F, m = S.m;
+  const u = (x - F.x) / m, v = (y - F.y) / m;
+  let p = v * 2.55
+    + Math.sin(u * 1.65 + 0.6) * 0.62
+    + Math.sin(u * 3.2 - 0.4) * 0.26
+    + Math.sin(u * 0.9 + 2.1) * 0.5
+    + Math.sin(v * 2.4 + 1.3) * 0.14;
+  for (const vt of S.vorts) {
+    const dx = (x - vt.x) / vt.r, dy = (y - vt.y) / (vt.r * 0.86);
+    p += vt.a * Math.exp(-(dx * dx + dy * dy) * 0.5);
   }
-  // the sky bends around each star, but only a little: the star itself is
-  // painted as rings, and a strong pull here turns the ribbons into hooks
-  for (const p of S.starPts) {
-    const dx = x - p.x, dy = y - p.y;
-    const d = Math.hypot(dx, dy);
-    if (d > p.r * 4) continue;
-    const pull = Math.pow(clamp(1 - d / (p.r * 4)), 2) * 0.55;
-    const t = Math.atan2(dy, dx) + Math.PI / 2;
-    ax += Math.cos(t) * pull;
-    ay += Math.sin(t) * pull;
-  }
-  return Math.atan2(ay, ax);
+  return p;
 }
 
-const nearness = (S, x, y) => Math.max(
-  clamp(1 - Math.hypot(x - S.vortA.x, (y - S.vortA.y) / 0.66) / (S.vortA.r * 1.5)),
-  clamp(1 - Math.hypot(x - S.vortB.x, (y - S.vortB.y) / 0.66) / (S.vortB.r * 1.5)),
-  clamp(1 - Math.hypot(x - S.vortC.x, (y - S.vortC.y) / 0.66) / (S.vortC.r * 1.6)) * 0.62,
-  clamp(1 - Math.hypot(x - S.vortD.x, (y - S.vortD.y) / 0.66) / (S.vortD.r * 1.6)) * 0.55
-);
+const BANDS = 11.5;     // how many light-dark waves cross the sky
+
+/**
+ * The brush runs along the contours: perpendicular to the gradient. At the
+ * very eye of a vortex the gradient vanishes and the direction would be
+ * meaningless, so there the brush is simply told to go round.
+ */
+function flowAt(S, x, y) {
+  const h = S.m * 0.005;
+  const dpx = (psi(S, x + h, y) - psi(S, x - h, y)) / (2 * h);
+  const dpy = (psi(S, x, y + h) - psi(S, x, y - h)) / (2 * h);
+  const g = Math.hypot(dpx, dpy);
+  if (g > 0.35) return Math.atan2(-dpx, dpy);
+  let best = null, bestD = Infinity;
+  for (const vt of S.vorts) {
+    const d = Math.hypot(x - vt.x, y - vt.y);
+    if (d < bestD) { bestD = d; best = vt; }
+  }
+  const round = Math.atan2(y - best.y, x - best.x) + Math.PI / 2 * best.spin;
+  if (g < 0.08) return round;
+  const t = (g - 0.08) / 0.27;
+  const a = Math.atan2(-dpx, dpy);
+  return Math.atan2(Math.sin(a) * t + Math.sin(round) * (1 - t),
+                    Math.cos(a) * t + Math.cos(round) * (1 - t));
+}
+
+/** Where a point sits in the light-dark wave: -1 trough, +1 crest. */
+const bandAt = (S, x, y) => Math.sin(psi(S, x, y) * BANDS);
+
+/** How much the sky is turning here — the swirls carry the brightest paint. */
+function nearness(S, x, y) {
+  let n = 0;
+  for (const vt of S.vorts) {
+    const dx = (x - vt.x) / (vt.r * 2.1), dy = (y - vt.y) / (vt.r * 1.8);
+    n = Math.max(n, clamp(1 - Math.hypot(dx, dy)) * Math.min(1, Math.abs(vt.a) / 1.6));
+  }
+  return n;
+}
 
 /** How near the light of a star or the moon — this is what carries yellow. */
 function glowAt(S, x, y) {
-  let g = clamp(1 - Math.hypot(x - S.moon.x, y - S.moon.y) / (S.moon.r * 6.2));
-  for (const p of S.starPts) g = Math.max(g, clamp(1 - Math.hypot(x - p.x, y - p.y) / (p.r * 5.2)));
+  let g = clamp(1 - Math.hypot(x - S.moon.x, y - S.moon.y) / (S.moon.r * 4.6));
+  for (const p of S.starPts) g = Math.max(g, clamp(1 - Math.hypot(x - p.x, y - p.y) / (p.r * 3.4)));
   return g;
 }
 
 /**
- * The design: where the picture is light and where it is dark, decided
- * before any colour is mixed. Everything else follows from it.
+ * The design. A luminous night: cobalt almost everywhere, running lighter
+ * along the crest of each wave and darker in its trough, opening to cream
+ * where the sky turns and where a light burns.
  */
 function lumAt(S, F, x, y) {
   const v = clamp((y - F.y) / (S.horizon - F.y));
-  // a night: deep ultramarine nearly everywhere, opening only where the
-  // sky turns and where a light burns
-  const band = 0.09 + 0.13 * Math.sin(Math.pow(v, 0.8) * Math.PI);
-  const side = clamp((x - F.x) / (F.w * 0.55)) * 0.06;
-  const swirl = Math.pow(nearness(S, x, y), 1.35) * 0.45;
-  const glow = Math.pow(glowAt(S, x, y), 1.7) * 0.34;
-  return clamp(band + side + swirl + glow, 0, 0.94);
+  const base = 0.34 - 0.06 * Math.pow(v, 1.6);
+  // the crests are much narrower than the troughs: the sky stays blue, and
+  // only the top of each wave comes up to cream
+  const b = bandAt(S, x, y);
+  const band = (b > 0 ? Math.pow(b, 1.7) : -Math.pow(-b, 1.1) * 0.8) * 0.26;
+  const swirl = Math.pow(nearness(S, x, y), 1.4) * 0.17;
+  const glow = Math.pow(glowAt(S, x, y), 1.5) * 0.36;
+  return clamp(base + band + swirl + glow, 0.03, 0.97);
 }
 
 /* ── the shapes ──────────────────────────────────────────────── */
@@ -203,16 +228,20 @@ function housePts(S, F, i) {
 }
 
 /** The church: a thin steeple that goes up into the sky, as it does. */
+/**
+ * The church tower and its steeple as one silhouette, from the horizon to
+ * the tip. The sky is cut around this, so it has to reach all the way down
+ * or a strip of bare canvas is left standing under the steeple.
+ */
 function spirePts(S, F) {
   const sp = S.spire;
+  const shoulder = sp.base - sp.h * 0.42;
   return [
-    { x: sp.x - sp.w * 2.4, y: S.horizon + F.h * 0.012 },
-    { x: sp.x - sp.w * 2.4, y: sp.base - sp.h * 0.3 },
-    { x: sp.x - sp.w, y: sp.base - sp.h * 0.42 },
+    { x: sp.x - sp.w * 1.5, y: S.horizon + F.h * 0.012 },
+    { x: sp.x - sp.w * 1.5, y: shoulder },
     { x: sp.x, y: sp.base - sp.h },
-    { x: sp.x + sp.w, y: sp.base - sp.h * 0.42 },
-    { x: sp.x + sp.w * 2.4, y: sp.base - sp.h * 0.3 },
-    { x: sp.x + sp.w * 2.4, y: S.horizon + F.h * 0.012 }
+    { x: sp.x + sp.w * 1.5, y: shoulder },
+    { x: sp.x + sp.w * 1.5, y: S.horizon + F.h * 0.012 }
   ];
 }
 
@@ -277,7 +306,7 @@ function ribbons(S, F, opts) {
       } else if (r3 < greenChance && lum > 0.42) {
         col = GREENS[Math.floor(clamp((lum - 0.42) / 0.45) * (GREENS.length - 1) + r4 * 0.6)];
       } else {
-        const idx = clamp(lum) * (SKY_RAMP.length - 1);
+        const idx = Math.pow(clamp(lum), 1.25) * (SKY_RAMP.length - 1);
         col = SKY_RAMP[Math.max(0, Math.min(SKY_RAMP.length - 1, Math.round(idx + (r4 - 0.5) * 1.3)))];
       }
       col = [col[0] + (k - 0.5) * 7, col[1] * (0.9 + r2 * 0.2), col[2] + (r3 - 0.5) * 5];
@@ -330,11 +359,12 @@ export const subject = {
     moon:      [45, 88, 60],   moonCore:  [48, 78, 88],   moonWarm: [34, 86, 52],
     hill:      [222, 48, 9],   hillLight: [206, 36, 16],  hillOlive: [104, 24, 13],
     village:   [228, 46, 7],   roof:      [226, 44, 6],   roofWarm: [14, 38, 9],
-    villageLit:[44, 94, 64],
+    villageLit:[44, 94, 64],  church: [206, 16, 50],   churchRoof: [222, 40, 11],
+    bush:      [204, 28, 40],  bushPale:  [192, 20, 56],  bushDark: [220, 42, 20],
     wall:      [216, 32, 13],  wallPale:  [202, 22, 20],
-    field:     [228, 50, 7],   fieldLight:[206, 34, 13],  fieldOlive: [94, 24, 8],
-    cypress:   [132, 64, 3],   cypressMid:[114, 52, 7],   cypressLit: [86, 40, 14],
-    cypressWarm:[22, 52, 9],   cypressAsh:[150, 14, 22],
+    field:     [226, 48, 9],   fieldLight:[204, 32, 17],  fieldOlive: [92, 26, 11],
+    cypress:   [24, 52, 4],    cypressMid:[30, 46, 7],    cypressLit: [36, 38, 12],
+    cypressWarm:[16, 54, 8],   cypressAsh:[92, 20, 13],   cypressDeep: [108, 44, 3],
     shadow:    [228, 44, 6],   light:     [48, 55, 86],
     surround:  [226, 28, 7]
   },
@@ -346,15 +376,17 @@ export const subject = {
     const S = g.cache('scene', () => scene(F));
     const sky = g.cache('sky', () => skyPts(S, F));
     const cyp = g.cache('cypress', () => cypressOutline(S.cypress));
+    const cyp2 = g.cache('cypress2', () => cypressOutline(S.cypress2));
     const hills = g.cache('hills', () => hillsPts(S, F));
 
     const shape = (pts) => (c) => poly(c, pts);
-    const onCypress = (c) => poly(c, cyp);
+    const onCypress = (c) => { poly(c, cyp); poly(c, cyp2); };
     const k = {
-      sky, cyp, hills,
+      sky, cyp, cyp2, hills,
       inSky: (fn) => g.clipOut(shape(sky), onCypress, fn),
       inShape: (pts) => (fn) => g.clipOut(shape(pts), onCypress, fn),
       inCypress: (fn) => g.clip(shape(cyp), fn),
+      inCypress2: (fn) => g.clip(shape(cyp2), fn),
       open: (build) => (fn) => g.clipOut(build, onCypress, fn)
     };
 
@@ -439,14 +471,15 @@ function drawing(g, S, F, C, m, k) {
 
   g.batch(0.238, 0.266, 'swirlDraw', () => {
     const out = [];
-    for (const [v, turns] of [[S.vortA, 1.35], [S.vortB, 1.0]]) {
+    for (const v of S.vorts) {
+      const turns = 1.1 + Math.abs(v.a) * 0.2;
       for (let i = 0; i < 2; i++) {
         const spiral = [];
         for (let j = 0; j <= 110; j++) {
           const u = j / 110, a = u * TAU * turns * v.spin + i * Math.PI;
           spiral.push({
-            x: v.x + Math.cos(a) * v.r * (0.12 + u * 0.82),
-            y: v.y + Math.sin(a) * v.r * (0.12 + u * 0.82) * 0.66
+            x: v.x + Math.cos(a) * v.r * 1.7 * (0.12 + u * 0.82),
+            y: v.y + Math.sin(a) * v.r * 1.5 * (0.12 + u * 0.82)
           });
         }
         out.push(spiral);
@@ -573,13 +606,15 @@ function underpaint(g, S, F, C, m, k) {
           { x: F.x + F.w, y: F.y + F.h }, { x: F.x, y: F.y + F.h }
         ]));
     });
-    k.inCypress(() => {
-      g.batch(0.348, 0.408, 'cypUnder',
-        () => layIn({ x: S.cypress.x - S.cypress.w * 1.8, y: S.cypress.top,
-                      w: S.cypress.w * 3.6, h: S.cypress.base - S.cypress.top }, m * 0.02, 0x54,
+    for (const [tree, key, sd] of [[S.cypress, 'cypUnder', 0x54], [S.cypress2, 'cyp2Under', 0x55]]) {
+    (tree === S.cypress ? k.inCypress : k.inCypress2)(() => {
+      g.batch(0.348, 0.408, key,
+        () => layIn({ x: tree.x - tree.w * 1.8, y: tree.top,
+                      w: tree.w * 3.6, h: tree.base - tree.top }, m * 0.02, sd,
                     (x, y, rr) => -Math.PI / 2 + (rr() - 0.5) * 0.6),
-        scrub(C.cypress, 0.76, 0.032, k.cyp));
+        scrub(C.cypress, 0.86, 0.032, tree === S.cypress ? k.cyp : k.cyp2));
     });
+    }
   }
 }
 
@@ -652,11 +687,36 @@ function land(g, S, F, C, m, k) {
           const h = housePts(S, F, i);
           out.push({ wall: [h[0], h[1], h[3], h[4]], roof: [h[1], h[2], h[3]], k: rr(), pale: rr() < 0.3 });
         }
-        out.push({ wall: spirePts(S, F), k: rr(), spire: true });
+        // the church stands above the roofs: a pale body and a steeple
+        const sp = S.spire, bw = sp.w * 2.6, bh = F.h * 0.042;
+        out.push({
+          church: true, k: rr(),
+          wall: [{ x: sp.x - bw, y: S.horizon + F.h * 0.012 }, { x: sp.x - bw, y: S.horizon - bh },
+                 { x: sp.x + bw, y: S.horizon - bh }, { x: sp.x + bw, y: S.horizon + F.h * 0.012 }],
+          roof: [{ x: sp.x - bw * 1.12, y: S.horizon - bh },
+                 { x: sp.x, y: S.horizon - bh - F.h * 0.016 },
+                 { x: sp.x + bw * 1.12, y: S.horizon - bh }],
+          // the tower carries the steeple up out of the village
+          steeple: spirePts(S, F)
+        });
         return out;
       }, (q) => {
         ctx.save();
-        ctx.fillStyle = css(q.spire ? C.village : (q.pale ? C.wallPale : C.wall), 0.99, (q.k - 0.5) * 6);
+        if (q.church) {
+          // the body and tower catch the light; the roof and steeple are the
+          // darkest things in the village
+          // the tower and steeple are the darkest thing in the village; the
+          // body of the church catches what light there is
+          ctx.fillStyle = css(C.churchRoof, 0.99, 4);
+          pathOf(ctx, q.steeple); ctx.fill();
+          ctx.fillStyle = css(C.church, 0.99, (q.k - 0.5) * 5);
+          pathOf(ctx, q.wall); ctx.fill();
+          ctx.fillStyle = css(C.churchRoof, 0.99);
+          pathOf(ctx, q.roof); ctx.fill();
+          ctx.restore();
+          return;
+        }
+        ctx.fillStyle = css(q.pale ? C.wallPale : C.wall, 0.99, (q.k - 0.5) * 6);
         pathOf(ctx, q.wall); ctx.fill();
         if (q.roof) {
           ctx.fillStyle = css(q.k < 0.16 ? C.roofWarm : C.roof, 0.99, (q.k - 0.5) * 5);
@@ -691,8 +751,7 @@ function land(g, S, F, C, m, k) {
 
   // the cypress: long curling strokes that climb it, not a bristle texture
   if (g.span(0.580, 0.848)) {
-    k.inCypress(() => {
-      const trace = (seed, count, run, lenK, wideK) => () => {
+    const trace = (C4, seed, count, run, lenK, wideK) => () => {
         const rr = makeRng(seed), out = [];
         for (let i = 0; i < count; i++) {
           let v = Math.pow(rr(), 0.8);
@@ -701,22 +760,23 @@ function land(g, S, F, C, m, k) {
           const n = run[0] + Math.floor(rr() * (run[1] - run[0]));
           const marks = [];
           for (let t = 0; t < n; t++) {
-            const ax = cypAxis(S.cypress, v), sp = Math.max(cypSpan(S.cypress, v), S.cypress.w * 0.05);
-            const x = ax + off * sp, y = lerp(S.cypress.base, S.cypress.top, v);
+            const ax = cypAxis(C4, v), sp = Math.max(cypSpan(C4, v), C4.w * 0.05);
+            const x = ax + off * sp, y = lerp(C4.base, C4.top, v);
             const a = cypFlow(v, off) + (r2 - 0.5) * 0.25;
             const fade = 1 - Math.pow(t / n, 1.8) * 0.45;
             marks.push({ x, y, a, v, off, k: k0, r2, len: lenK * (0.55 + k0 * 1.0) * fade, wide: wideK * (0.6 + r2 * 0.8) * fade });
-            v += (lenK * 0.6) / (S.cypress.base - S.cypress.top);
+            v += (lenK * 0.6) / (C4.base - C4.top);
             off += Math.sin(v * 7 + i) * 0.11;
             if (v >= 1) break;
           }
           out.push({ y: marks[0].y, marks });
         }
-        out.sort((p, q) => q.y - p.y);
-        const flat = [];
-        for (const r of out) for (const mk of r.marks) flat.push(mk);
-        return flat;
-      };
+      out.sort((p, q) => q.y - p.y);
+      const flat = [];
+      for (const r of out) for (const mk of r.marks) flat.push(mk);
+      return flat;
+    };
+    k.inCypress(() => {
       // the sky lights the outside of the tree; its middle stays black. On
       // top of that the foliage grows in clumps, so the light breaks up
       // rather than grading evenly from edge to edge.
@@ -725,48 +785,98 @@ function land(g, S, F, C, m, k) {
         return clamp(0.5 + 0.62 * a * b);
       };
       const rim = (q) => clamp(Math.pow(Math.abs(q.off) / 1.05, 1.8) * 0.66 + Math.pow(clump(q), 1.6) * 0.62);
-      g.batch(0.580, 0.700, 'cypA', trace(0x303, 3000, [5, 14], m * 0.030, m * 0.0058), (q) => {
+      g.batch(0.580, 0.700, 'cypA', trace(S.cypress, 0x303, 3000, [5, 14], m * 0.030, m * 0.0058), (q) => {
         const r = rim(q);
-        const col = q.k < 0.07 ? C.cypressWarm : q.k < 0.26 ? C.cypressMid : C.cypress;
+        const col = q.k < 0.14 ? C.cypressDeep : q.k < 0.34 ? C.cypressMid : C.cypress;
         oil(ctx, q.x, q.y, q.len, q.a, q.wide,
-            [col[0] - r * 16, col[1] * (1 - r * 0.2), col[2] + (q.r2 - 0.5) * 3 + r * 6],
-            { alpha: 0.86, curve: 0.6, tail: 0.5, k: q.k, bristle: 2, relief: 0.5 + r * 0.5 });
+            [col[0] + r * 6, col[1] * (1 - r * 0.1), col[2] + (q.r2 - 0.5) * 2 + r * 3],
+            { alpha: 0.9, curve: 0.6, tail: 0.5, k: q.k, bristle: 2, relief: 0.3 + r * 0.28 });
       });
-      g.batch(0.688, 0.800, 'cypB', trace(0x304, 2600, [5, 13], m * 0.025, m * 0.0045), (q) => {
+      g.batch(0.688, 0.800, 'cypB', trace(S.cypress, 0x304, 2600, [5, 13], m * 0.025, m * 0.0045), (q) => {
         const r = rim(q);
-        const col = q.k < 0.12 + r * 0.35 ? C.cypressLit : q.k < 0.5 ? C.cypressMid : C.cypress;
+        const col = q.k < 0.12 + r * 0.3 ? C.cypressLit : q.k < 0.42 ? C.cypressWarm : q.k < 0.7 ? C.cypressMid : C.cypressDeep;
         oil(ctx, q.x, q.y, q.len, q.a, q.wide,
-            [col[0] - r * 18 + (q.k - 0.5) * 10, col[1] * (1 - r * 0.24),
-             col[2] + (q.r2 - 0.5) * 4 + r * 9 - q.v * 1.5],
-            { alpha: 0.78, curve: 0.75, tail: 0.6, k: q.k, bristle: 2, relief: 0.65 + r * 0.7 });
+            [col[0] + r * 8 + (q.k - 0.5) * 8, col[1] * (1 - r * 0.12),
+             col[2] + (q.r2 - 0.5) * 3 + r * 5 - q.v * 1],
+            { alpha: 0.82, curve: 0.75, tail: 0.6, k: q.k, bristle: 2, relief: 0.35 + r * 0.4 });
       });
-      g.batch(0.790, 0.848, 'cypC', trace(0x305, 1800, [4, 10], m * 0.017, m * 0.0030), (q) => {
+      g.batch(0.790, 0.848, 'cypC', trace(S.cypress, 0x305, 1800, [4, 10], m * 0.017, m * 0.0030), (q) => {
         const r = rim(q);
-        const col = q.k < 0.1 ? C.cypressAsh : q.k < 0.3 + r * 0.4 ? C.cypressLit : C.cypressMid;
+        const col = q.k < 0.09 ? C.cypressAsh : q.k < 0.28 + r * 0.35 ? C.cypressLit : C.cypressMid;
         oil(ctx, q.x, q.y, q.len, q.a, q.wide,
-            [col[0] - r * 14, col[1], col[2] + r * 11 + (q.r2 - 0.5) * 5],
-            { alpha: 0.6 + q.k * 0.3, curve: 0.9, tail: 0.7, k: q.k, bristle: 0, relief: 0.8 + r * 0.6 });
+            [col[0] + r * 5, col[1], col[2] + r * 6 + (q.r2 - 0.5) * 4],
+            { alpha: 0.6 + q.k * 0.3, curve: 0.9, tail: 0.7, k: q.k, bristle: 0, relief: 0.45 + r * 0.35 });
+      });
+    });
+    k.inCypress2(() => {
+      const rim2 = (q) => clamp(Math.pow(Math.abs(q.off) / 1.05, 1.8) * 0.66
+                                + Math.pow(clamp(0.5 + 0.62 * Math.sin(q.v * 23 + q.off * 4.1)
+                                                 * Math.sin(q.v * 9.4 - q.off * 2.6)), 1.6) * 0.62);
+      g.batch(0.596, 0.716, 'cyp2A', trace(S.cypress2, 0x313, 1500, [5, 13], m * 0.026, m * 0.0052), (q) => {
+        const r = rim2(q);
+        const col = q.k < 0.14 ? C.cypressDeep : q.k < 0.34 ? C.cypressMid : C.cypress;
+        oil(ctx, q.x, q.y, q.len, q.a, q.wide,
+            [col[0] + r * 6, col[1] * (1 - r * 0.1), col[2] + (q.r2 - 0.5) * 2 + r * 3],
+            { alpha: 0.9, curve: 0.6, tail: 0.5, k: q.k, bristle: 2, relief: 0.3 + r * 0.28 });
+      });
+      g.batch(0.706, 0.816, 'cyp2B', trace(S.cypress2, 0x314, 1200, [5, 12], m * 0.021, m * 0.004), (q) => {
+        const r = rim2(q);
+        const col = q.k < 0.12 + r * 0.3 ? C.cypressLit : q.k < 0.42 ? C.cypressWarm : C.cypressMid;
+        oil(ctx, q.x, q.y, q.len, q.a, q.wide,
+            [col[0] + r * 8 + (q.k - 0.5) * 8, col[1] * (1 - r * 0.12), col[2] + (q.r2 - 0.5) * 3 + r * 5],
+            { alpha: 0.82, curve: 0.8, tail: 0.6, k: q.k, bristle: 2, relief: 0.35 + r * 0.4 });
+      });
+    });
+  }
+
+  // the olive bushes along the front of the village, in curling commas
+  if (g.span(0.726, 0.804)) {
+    k.open((c) => c.rect(F.x, S.horizon - F.h * 0.01, F.w, F.h * 0.12))(() => {
+      g.batch(0.726, 0.804, 'bushes', () => {
+        const rr = makeRng(0xb05), out = [];
+        for (let i = 0; i < 3200; i++) {
+          const u = 0.30 + rr() * 0.72;
+          if (u > 1) continue;
+          // they clump into bushes rather than running as an even hedge
+          const lump = 0.5 + 0.5 * Math.sin(u * 21 + Math.sin(u * 7) * 2);
+          if (rr() > lump * 1.15 - 0.08) continue;
+          const d = Math.pow(rr(), 0.7);
+          const y = S.horizon + F.h * (0.004 + d * 0.072);
+          const x = F.x + u * F.w;
+          // each mark curls: that is what makes a bush read as a bush
+          const a = Math.sin(u * 41 + d * 6) * 1.5 - 0.3;
+          out.push({ x, y, u, d, a, k: rr(), r2: rr(), lump });
+        }
+        return out.sort((p, q) => p.y - q.y);
+      }, (q) => {
+        const col = q.k < 0.22 ? C.bushPale : q.k < 0.62 ? C.bush : C.bushDark;
+        oil(ctx, q.x, q.y, m * (0.012 + q.k * 0.014), q.a, m * (0.004 + q.k * 0.004),
+            [col[0] + (q.k - 0.5) * 10, col[1], col[2] + (q.r2 - 0.5) * 8 - q.d * 6],
+            { alpha: 0.88, curve: 1.15, tail: 0.6, k: q.k, bristle: 2, relief: 0.5 });
       });
     });
   }
 
   if (g.span(0.756, 0.876)) {
-    k.open((c) => c.rect(F.x, S.horizon + F.h * 0.035, F.w, F.y + F.h - S.horizon))(() => {
+    k.open((c) => c.rect(F.x, S.horizon + F.h * 0.08, F.w, F.y + F.h - S.horizon))(() => {
       g.batch(0.756, 0.876, 'field', () => {
         const rr = makeRng(0x515), out = [];
-        for (let i = 0; i < 6000; i++) {
+        for (let i = 0; i < 7600; i++) {
           const u = rr(), d = Math.pow(rr(), 0.75);
-          out.push({ x: F.x + u * F.w, y: furrowY(S, F, u, d), u, d, k: rr(), r2: rr() });
+          out.push({ x: F.x + u * F.w, y: furrowY(S, F, u, d), u, d, k: rr(), r2: rr(), r3: rr() });
         }
         return out.sort((p, q) => p.y - q.y);
       }, (q) => {
-        const strip = Math.sin(q.d * 9.3 + Math.sin(q.u * 6.7) * 1.7);
-        const col = strip > 0.72 + q.k * 0.3 ? C.fieldOlive : q.k < 0.2 ? C.fieldLight : C.field;
-        const slope = Math.cos(q.u * Math.PI * 2.1 + 0.4) * 0.34;
-        oil(ctx, q.x, q.y, m * (0.018 + q.k * 0.032), slope + (q.r2 - 0.5) * 0.16,
-            m * (0.0038 + q.k * 0.004),
-            [col[0] + (q.k - 0.5) * 10, col[1], col[2] + 1 - q.d * 4 + (q.r2 - 0.5) * 4],
-            { alpha: 0.72, curve: 0.35, tail: 0.5, k: q.k, bristle: 2, relief: 0.5 });
+        // the ground runs in long furrows, lighter where it rises to the
+        // village and darkest at the very front of the picture
+        const strip = Math.sin(q.d * 7.4 + Math.sin(q.u * 5.1) * 1.9);
+        const col = strip > 0.58 + q.k * 0.34 ? C.fieldOlive : q.k < 0.24 ? C.fieldLight : C.field;
+        const slope = Math.cos(q.u * Math.PI * 2.1 + 0.4) * 0.34 + (q.r3 - 0.5) * 0.12;
+        oil(ctx, q.x, q.y, m * (0.02 + q.k * 0.05), slope + (q.r2 - 0.5) * 0.14,
+            m * (0.0036 + q.k * 0.0042),
+            [col[0] + (q.k - 0.5) * 12, col[1] * (0.88 + q.r3 * 0.3),
+             col[2] + 4 - q.d * 7 + (q.r2 - 0.5) * 5],
+            { alpha: 0.78, curve: 0.4, tail: 0.55, k: q.k, bristle: 2, relief: 0.45 });
       });
     });
   }
