@@ -187,9 +187,9 @@ function chrome(g, topic, clock, p) {
   ctx.fillStyle = css(pal.ink, 0.92);
   ctx.beginPath(); ctx.arc(bx + bw * clamp(p), by, 3.6, 0, TAU); ctx.fill();
 
-  // the year
-  const yr = Math.round(g.year);
-  const label = topic.stamp ? topic.stamp(yr) : String(yr);
+  // The year, or whatever the subject counts in. The raw value goes to
+  // the topic: rounding it here turned an August 1968 session into 1969.
+  const label = topic.stamp ? topic.stamp(g.year, clock) : String(Math.round(g.year));
   ctx.font = `300 ${Math.round(Math.min(w, h) * 0.115)}px "JetBrains Mono", ui-monospace, monospace`;
   ctx.fillStyle = css(pal.ink, 0.92);
   ctx.fillText(label, bx, by + Math.min(w, h) * 0.135);

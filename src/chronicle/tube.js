@@ -16,172 +16,172 @@ import { fitTo, growBox } from '../chronicle.js';
 
 // name: [x, y, label side]  — a grid where one unit is one station apart
 const S = {
-  'アマシャム':        [1.0, 1.0, 'b'],
-  'ハーロウ':          [3.0, 2.6, 'b'],
-  'ハーロウ＆ウィールドストン': [2.0, 4.6, 'l'],
-  'ウェンブリー・パーク': [4.6, 4.2, 'b'],
-  'フィンチリー・ロード': [6.2, 5.6, 'r'],
-  'エッジウェア':      [8.6, 0.8, 'r'],
-  'ゴルダーズ・グリーン': [8.6, 2.8, 'r'],
-  'カムデン・タウン':   [9.6, 5.0, 'r'],
-  'コックフォスターズ': [16.4, 1.2, 'l'],
-  'フィンズベリー・パーク': [13.4, 4.2, 'r'],
-  'ハイベリー':        [12.6, 5.0, 'r'],
-  'ウォルサムストウ':   [17.0, 3.0, 'l'],
-  'エッピング':        [19.6, 4.4, 'l'],
-  'クイーンズ・パーク': [3.2, 6.2, 'l'],
-  'パディントン':      [4.2, 8.0, 't'],
-  'エッジウェア・ロード': [5.2, 7.4, 't'],
-  'ベイカー・ストリート': [6.6, 6.6, 't'],
-  'ユーストン':        [9.2, 6.0, 't'],
-  'キングス・クロス':   [10.6, 6.0, 't'],
-  'エンジェル':        [12.0, 5.6, 't'],
-  'ファリンドン':      [12.0, 7.0, 't'],
-  'ムーアゲイト':      [13.4, 7.0, 't'],
-  'リヴァプール・ストリート': [14.8, 7.0, 't'],
-  'オールドゲイト':    [16.0, 7.6, 'r'],
-  'イーリング':        [0.4, 8.6, 'l'],
-  'シェパーズ・ブッシュ': [1.8, 8.6, 'b'],
-  'ノッティング・ヒル・ゲート': [3.2, 8.6, 'b'],
-  'ランカスター・ゲート': [4.6, 8.6, 'b'],
-  'マーブル・アーチ':   [5.6, 8.6, 'b'],
-  'ボンド・ストリート': [6.6, 8.6, 't'],
-  'オックスフォード・サーカス': [7.6, 8.6, 't'],
-  'トッテナム・コート・ロード': [9.0, 8.6, 't'],
-  'ホルボーン':        [10.4, 8.6, 't'],
-  'セント・ポール':     [11.8, 8.6, 't'],
-  'バンク':            [13.4, 9.0, 'r'],
-  'ピカデリー・サーカス': [8.4, 9.6, 'r'],
-  'レスター・スクエア': [9.2, 9.4, 'r'],
-  'グリーン・パーク':   [7.6, 10.0, 'l'],
-  'チャリング・クロス': [9.2, 10.2, 'r'],
-  'エンバンクメント':   [9.6, 11.0, 'r'],
-  'ウォータールー':     [10.2, 12.0, 'r'],
-  'ウェストミンスター': [8.6, 11.0, 'l'],
-  'ヴィクトリア':      [7.0, 11.0, 'b'],
-  'スローン・スクエア': [6.0, 11.0, 'b'],
-  'サウス・ケンジントン': [5.0, 11.0, 'b'],
-  'グロスター・ロード': [4.0, 11.0, 'b'],
-  'アールズ・コート':   [3.0, 11.0, 'b'],
-  'ハマースミス':      [1.4, 11.0, 'b'],
-  'ヒースロー':        [0.2, 12.8, 'b'],
-  'ブラックフライアーズ': [11.0, 11.0, 'b'],
-  'モニュメント':      [13.0, 10.6, 'r'],
-  'タワー・ヒル':      [14.6, 10.6, 'r'],
-  'ホワイトチャペル':   [16.4, 9.6, 'r'],
-  'ストラットフォード': [18.0, 8.0, 'r'],
-  'アップミンスター':   [19.8, 9.2, 'r'],
-  'ロンドン・ブリッジ': [12.2, 12.0, 'r'],
-  'バラ':              [12.0, 13.0, 'r'],
-  'エレファント＆キャッスル': [11.6, 14.0, 'r'],
-  'ケニントン':        [11.0, 15.0, 'r'],
-  'ストックウェル':     [10.0, 16.0, 'l'],
-  'ブリクストン':      [11.0, 17.0, 'r'],
-  'モーデン':          [9.6, 18.0, 'l'],
-  'カナダ・ウォーター': [15.4, 11.6, 'b'],
-  'カナリー・ワーフ':   [17.0, 11.6, 'b'],
-  'ノース・グリニッジ': [18.4, 10.6, 'r'],
-  'アビー・ウッド':     [19.8, 12.0, 'r'],
-  'オールド・ストリート': [14.2, 6.0, 'r']
+  'Amersham':        [1.0, 1.0, 'b'],
+  'Harrow':          [3.0, 2.6, 'b'],
+  'Harrow & Wealdstone': [2.0, 4.6, 'l'],
+  'Wembley Park': [4.6, 4.2, 'b'],
+  'Finchley Road': [6.2, 5.6, 'r'],
+  'Edgware':      [8.6, 0.8, 'r'],
+  'Golders Green': [8.6, 2.8, 'r'],
+  'Camden Town':   [9.6, 5.0, 'r'],
+  'Cockfosters': [16.4, 1.2, 'l'],
+  'Finsbury Park': [13.4, 4.2, 'r'],
+  'Highbury':        [12.6, 5.0, 'r'],
+  'Walthamstow':   [17.0, 3.0, 'l'],
+  'Epping':        [19.6, 4.4, 'l'],
+  'Queen’s Park': [3.2, 6.2, 'l'],
+  'Paddington':      [4.2, 8.0, 't'],
+  'Edgware Road': [5.2, 7.4, 't'],
+  'Baker Street': [6.6, 6.6, 't'],
+  'Euston':        [9.2, 6.0, 't'],
+  'King’s Cross':   [10.6, 6.0, 't'],
+  'Angel':        [12.0, 5.6, 't'],
+  'Farringdon':      [12.0, 7.0, 't'],
+  'Moorgate':      [13.4, 7.0, 't'],
+  'Liverpool Street': [14.8, 7.0, 't'],
+  'Aldgate':    [16.0, 7.6, 'r'],
+  'Ealing':        [0.4, 8.6, 'l'],
+  'Shepherd’s Bush': [1.8, 8.6, 'b'],
+  'Notting Hill Gate': [3.2, 8.6, 'b'],
+  'Lancaster Gate': [4.6, 8.6, 'b'],
+  'Marble Arch':   [5.6, 8.6, 'b'],
+  'Bond Street': [6.6, 8.6, 't'],
+  'Oxford Circus': [7.6, 8.6, 't'],
+  'Tottenham Court Rd': [9.0, 8.6, 't'],
+  'Holborn':        [10.4, 8.6, 't'],
+  'St Paul’s':     [11.8, 8.6, 't'],
+  'Bank':            [13.4, 9.0, 'r'],
+  'Piccadilly Circus': [8.4, 9.6, 'r'],
+  'Leicester Square': [9.2, 9.4, 'r'],
+  'Green Park':   [7.6, 10.0, 'l'],
+  'Charing Cross': [9.2, 10.2, 'r'],
+  'Embankment':   [9.6, 11.0, 'r'],
+  'Waterloo':     [10.2, 12.0, 'r'],
+  'Westminster': [8.6, 11.0, 'l'],
+  'Victoria':      [7.0, 11.0, 'b'],
+  'Sloane Square': [6.0, 11.0, 'b'],
+  'South Kensington': [5.0, 11.0, 'b'],
+  'Gloucester Road': [4.0, 11.0, 'b'],
+  'Earl’s Court':   [3.0, 11.0, 'b'],
+  'Hammersmith':      [1.4, 11.0, 'b'],
+  'Heathrow':        [0.2, 12.8, 'b'],
+  'Blackfriars': [11.0, 11.0, 'b'],
+  'Monument':      [13.0, 10.6, 'r'],
+  'Tower Hill':      [14.6, 10.6, 'r'],
+  'Whitechapel':   [16.4, 9.6, 'r'],
+  'Stratford': [18.0, 8.0, 'r'],
+  'Upminster':   [19.8, 9.2, 'r'],
+  'London Bridge': [12.2, 12.0, 'r'],
+  'Borough':              [12.0, 13.0, 'r'],
+  'Elephant & Castle': [11.6, 14.0, 'r'],
+  'Kennington':        [11.0, 15.0, 'r'],
+  'Stockwell':     [10.0, 16.0, 'l'],
+  'Brixton':      [11.0, 17.0, 'r'],
+  'Morden':          [9.6, 18.0, 'l'],
+  'Canada Water': [15.4, 11.6, 'b'],
+  'Canary Wharf':   [17.0, 11.6, 'b'],
+  'North Greenwich': [18.4, 10.6, 'r'],
+  'Abbey Wood':     [19.8, 12.0, 'r'],
+  'Old Street': [14.2, 6.0, 'r']
 };
 
 // [line name, colour, station chain, openings [year, from, to, note]]
 const LINES = [
-  ['メトロポリタン線', '#9B0056',
-   ['アマシャム', 'ハーロウ', 'ウェンブリー・パーク', 'フィンチリー・ロード', 'ベイカー・ストリート',
-    'エッジウェア・ロード', 'パディントン'],
-   [[1863, 4, 6, 'パディントン〜ファリンドン。世界で最初の地下鉄が、蒸気機関車で走り出す'],
-    [1868, 3, 4, 'スイス・コテージへ。地下鉄が郊外へ向かい始める'],
-    [1879, 1, 3, 'ハーロウまで。線路の先に住宅地が造られていく'],
-    [1892, 0, 1, 'アマシャムへ。ロンドンから五十キロ、畑の中に駅ができる']]],
+  ['Metropolitan line', '#9B0056',
+   ['Amersham', 'Harrow', 'Wembley Park', 'Finchley Road', 'Baker Street',
+    'Edgware Road', 'Paddington'],
+   [[1863, 4, 6, 'Paddington 〜 Farringdon。世界で最初の地下鉄が、蒸気機関車で走り出す'],
+    [1868, 3, 4, 'Swiss Cottage へ。地下鉄が郊外へ向かい始める'],
+    [1879, 1, 3, 'Harrow まで。線路の先に住宅地が造られていく'],
+    [1892, 0, 1, 'Amersham へ。ロンドンから五十キロ、畑の中に駅ができる']]],
 
-  ['メトロポリタン線（東）', '#9B0056',
-   ['パディントン', 'エッジウェア・ロード', 'ベイカー・ストリート', 'ユーストン', 'キングス・クロス',
-    'ファリンドン', 'ムーアゲイト', 'リヴァプール・ストリート', 'オールドゲイト'],
-   [[1863, 0, 5, ''], [1865, 5, 6, 'ムーアゲイトまで延伸'],
-    [1876, 6, 8, 'オールドゲイトへ']]],
+  ['Metropolitan line', '#9B0056',
+   ['Paddington', 'Edgware Road', 'Baker Street', 'Euston', 'King’s Cross',
+    'Farringdon', 'Moorgate', 'Liverpool Street', 'Aldgate'],
+   [[1863, 0, 5, ''], [1865, 5, 6, 'Moorgate まで延伸'],
+    [1876, 6, 8, 'Aldgate へ']]],
 
-  ['ハマースミス＆シティ線', '#F3A9BB',
-   ['ハマースミス', 'ノッティング・ヒル・ゲート', 'パディントン', 'エッジウェア・ロード',
-    'キングス・クロス', 'リヴァプール・ストリート', 'ホワイトチャペル'],
-   [[1864, 0, 3, 'ハマースミス支線。まだ畑だった土地に線路が引かれる'],
+  ['Hammersmith & City line', '#F3A9BB',
+   ['Hammersmith', 'Notting Hill Gate', 'Paddington', 'Edgware Road',
+    'King’s Cross', 'Liverpool Street', 'Whitechapel'],
+   [[1864, 0, 3, 'Hammersmith 支線。まだ畑だった土地に線路が引かれる'],
     [1884, 3, 6, '東へ抜ける']]],
 
-  ['ディストリクト線', '#00782A',
-   ['ハマースミス', 'アールズ・コート', 'グロスター・ロード', 'サウス・ケンジントン', 'スローン・スクエア',
-    'ヴィクトリア', 'ウェストミンスター', 'エンバンクメント', 'ブラックフライアーズ', 'モニュメント',
-    'タワー・ヒル', 'ホワイトチャペル', 'アップミンスター'],
-   [[1868, 3, 6, 'ディストリクト鉄道。サウス・ケンジントンからウェストミンスターへ'],
-    [1870, 6, 8, 'ブラックフライアーズまで'],
-    [1874, 0, 3, 'ハマースミスまで西へ'],
-    [1884, 8, 10, 'タワー・ヒルへ。環状線が一周つながる'],
-    [1902, 11, 12, 'アップミンスターへ。東の農村が通勤圏に入る']]],
+  ['District line', '#00782A',
+   ['Hammersmith', 'Earl’s Court', 'Gloucester Road', 'South Kensington', 'Sloane Square',
+    'Victoria', 'Westminster', 'Embankment', 'Blackfriars', 'Monument',
+    'Tower Hill', 'Whitechapel', 'Upminster'],
+   [[1868, 3, 6, 'ディストリクト鉄道。South Kensington から Westminster へ'],
+    [1870, 6, 8, 'Blackfriars まで'],
+    [1874, 0, 3, 'Hammersmith まで西へ'],
+    [1884, 8, 10, 'Tower Hill へ。環状線が一周つながる'],
+    [1902, 11, 12, 'Upminster へ。東の農村が通勤圏に入る']]],
 
-  ['サークル線', '#FFD300',
-   ['パディントン', 'エッジウェア・ロード', 'ベイカー・ストリート', 'ユーストン', 'キングス・クロス',
-    'ファリンドン', 'ムーアゲイト', 'リヴァプール・ストリート', 'オールドゲイト', 'タワー・ヒル',
-    'モニュメント', 'ブラックフライアーズ', 'エンバンクメント', 'ウェストミンスター', 'ヴィクトリア',
-    'スローン・スクエア', 'サウス・ケンジントン', 'グロスター・ロード', 'ノッティング・ヒル・ゲート',
-    'パディントン'],
+  ['Circle line', '#FFD300',
+   ['Paddington', 'Edgware Road', 'Baker Street', 'Euston', 'King’s Cross',
+    'Farringdon', 'Moorgate', 'Liverpool Street', 'Aldgate', 'Tower Hill',
+    'Monument', 'Blackfriars', 'Embankment', 'Westminster', 'Victoria',
+    'Sloane Square', 'South Kensington', 'Gloucester Road', 'Notting Hill Gate',
+    'Paddington'],
    [[1884, 0, 19, 'インナー・サークル完成。煙の立ちこめる環状線を、機関車が一日中回り続けた']]],
 
-  ['シティ・南ロンドン線（ノーザン線）', '#000000',
-   ['エッジウェア', 'ゴルダーズ・グリーン', 'カムデン・タウン', 'ユーストン', 'トッテナム・コート・ロード',
-    'チャリング・クロス', 'ウォータールー', 'ロンドン・ブリッジ', 'バラ', 'エレファント＆キャッスル',
-    'ケニントン', 'ストックウェル', 'モーデン'],
+  ['Northern line', '#000000',
+   ['Edgware', 'Golders Green', 'Camden Town', 'Euston', 'Tottenham Court Rd',
+    'Charing Cross', 'Waterloo', 'London Bridge', 'Borough', 'Elephant & Castle',
+    'Kennington', 'Stockwell', 'Morden'],
    [[1890, 7, 11, '世界で最初の電気運転の深部地下鉄。煙のない地下鉄がここから始まる'],
-    [1907, 1, 5, 'ゴルダーズ・グリーンへ。駅ができてから街ができた'],
-    [1924, 0, 1, 'エッジウェアまで'],
-    [1926, 11, 12, 'モーデンまで南へ']]],
+    [1907, 1, 5, 'Golders Green へ。駅ができてから街ができた'],
+    [1924, 0, 1, 'Edgware まで'],
+    [1926, 11, 12, 'Morden まで南へ']]],
 
-  ['セントラル線', '#E32017',
-   ['イーリング', 'シェパーズ・ブッシュ', 'ノッティング・ヒル・ゲート', 'ランカスター・ゲート',
-    'マーブル・アーチ', 'ボンド・ストリート', 'オックスフォード・サーカス', 'トッテナム・コート・ロード',
-    'ホルボーン', 'セント・ポール', 'バンク', 'リヴァプール・ストリート', 'ストラットフォード', 'エッピング'],
+  ['Central line', '#E32017',
+   ['Ealing', 'Shepherd’s Bush', 'Notting Hill Gate', 'Lancaster Gate',
+    'Marble Arch', 'Bond Street', 'Oxford Circus', 'Tottenham Court Rd',
+    'Holborn', 'St Paul’s', 'Bank', 'Liverpool Street', 'Stratford', 'Epping'],
    [[1900, 1, 10, 'どこまで乗っても均一二ペンス。「トゥーペニー・チューブ」と呼ばれた'],
-    [1912, 10, 11, 'リヴァプール・ストリートへ'],
-    [1920, 0, 1, 'イーリングへ西進'],
+    [1912, 10, 11, 'Liverpool Street へ'],
+    [1920, 0, 1, 'Ealing へ西進'],
     [1946, 11, 12, '戦時中は防空壕として使われた区間が、旅客線として開く'],
-    [1949, 12, 13, 'エッピングへ。森の際まで地下鉄が届く']]],
+    [1949, 12, 13, 'Epping へ。森の際まで地下鉄が届く']]],
 
-  ['ウォータールー＆シティ線', '#95CDBA',
-   ['ウォータールー', 'バンク'],
+  ['Waterloo & City line', '#95CDBA',
+   ['Waterloo', 'Bank'],
    [[1898, 0, 1, '駅二つだけの路線。通勤者はこれを「排水管」と呼んだ']]],
 
-  ['ベイカールー線', '#B36305',
-   ['ハーロウ＆ウィールドストン', 'クイーンズ・パーク', 'パディントン', 'エッジウェア・ロード',
-    'ベイカー・ストリート', 'オックスフォード・サーカス', 'ピカデリー・サーカス', 'チャリング・クロス',
-    'エンバンクメント', 'ウォータールー', 'エレファント＆キャッスル'],
-   [[1906, 4, 10, 'ベイカー街とウォータールーを結ぶ ― 名前はその二つをつないだもの'],
-    [1907, 3, 4, 'エッジウェア・ロードへ'],
-    [1913, 2, 3, 'パディントンへ'],
+  ['Bakerloo line', '#B36305',
+   ['Harrow & Wealdstone', 'Queen’s Park', 'Paddington', 'Edgware Road',
+    'Baker Street', 'Oxford Circus', 'Piccadilly Circus', 'Charing Cross',
+    'Embankment', 'Waterloo', 'Elephant & Castle'],
+   [[1906, 4, 10, 'Baker Street と Waterloo を結ぶ ― 名前はその二つをつないだもの'],
+    [1907, 3, 4, 'Edgware Road へ'],
+    [1913, 2, 3, 'Paddington へ'],
     [1917, 0, 2, '北西の郊外へ']]],
 
-  ['ピカデリー線', '#003688',
-   ['ヒースロー', 'ハマースミス', 'アールズ・コート', 'グロスター・ロード', 'サウス・ケンジントン',
-    'グリーン・パーク', 'ピカデリー・サーカス', 'レスター・スクエア', 'ホルボーン', 'キングス・クロス',
-    'フィンズベリー・パーク', 'コックフォスターズ'],
-   [[1906, 1, 10, 'ハマースミスからフィンズベリー・パークまで一気に開業'],
-    [1933, 10, 11, 'コックフォスターズへ。ホールデンが設計した円筒形の駅舎が並ぶ'],
-    [1977, 0, 1, 'ヒースロー空港へ。空港に直結した世界で最初の地下鉄']]],
+  ['Piccadilly line', '#003688',
+   ['Heathrow', 'Hammersmith', 'Earl’s Court', 'Gloucester Road', 'South Kensington',
+    'Green Park', 'Piccadilly Circus', 'Leicester Square', 'Holborn', 'King’s Cross',
+    'Finsbury Park', 'Cockfosters'],
+   [[1906, 1, 10, 'Hammersmith から Finsbury Park まで一気に開業'],
+    [1933, 10, 11, 'Cockfosters へ。ホールデンが設計した円筒形の駅舎が並ぶ'],
+    [1977, 0, 1, 'Heathrow 空港へ。空港に直結した世界で最初の地下鉄']]],
 
-  ['ヴィクトリア線', '#0098D4',
-   ['ウォルサムストウ', 'フィンズベリー・パーク', 'ハイベリー', 'キングス・クロス', 'ユーストン',
-    'オックスフォード・サーカス', 'グリーン・パーク', 'ヴィクトリア', 'ストックウェル', 'ブリクストン'],
+  ['Victoria line', '#0098D4',
+   ['Walthamstow', 'Finsbury Park', 'Highbury', 'King’s Cross', 'Euston',
+    'Oxford Circus', 'Green Park', 'Victoria', 'Stockwell', 'Brixton'],
    [[1968, 0, 2, '半世紀ぶりの新線。世界で初めて全線を自動運転にした地下鉄'],
-    [1969, 2, 7, 'ヴィクトリア駅まで。女王が開業式で自ら切符を買った'],
-    [1971, 7, 9, 'ブリクストンへ']]],
+    [1969, 2, 7, 'Victoria 駅まで。女王が開業式で自ら切符を買った'],
+    [1971, 7, 9, 'Brixton へ']]],
 
-  ['ジュビリー線', '#A0A5A9',
-   ['ウェンブリー・パーク', 'フィンチリー・ロード', 'ベイカー・ストリート', 'ボンド・ストリート',
-    'グリーン・パーク', 'ウェストミンスター', 'ウォータールー', 'ロンドン・ブリッジ',
-    'カナダ・ウォーター', 'カナリー・ワーフ', 'ノース・グリニッジ', 'ストラットフォード'],
+  ['Jubilee line', '#A0A5A9',
+   ['Wembley Park', 'Finchley Road', 'Baker Street', 'Bond Street',
+    'Green Park', 'Westminster', 'Waterloo', 'London Bridge',
+    'Canada Water', 'Canary Wharf', 'North Greenwich', 'Stratford'],
    [[1979, 0, 4, '女王在位二十五年を記念して名づけられる'],
-    [1999, 5, 11, 'ドックランズへ。閉じた埠頭の跡が金融街に変わっていく']]],
+    [1999, 5, 11, 'Docklands へ。閉じた埠頭の跡が金融街に変わっていく']]],
 
-  ['エリザベス線', '#6950A1',
-   ['パディントン', 'ボンド・ストリート', 'トッテナム・コート・ロード', 'ファリンドン',
-    'リヴァプール・ストリート', 'ホワイトチャペル', 'カナリー・ワーフ', 'アビー・ウッド'],
+  ['Elizabeth line', '#6950A1',
+   ['Paddington', 'Bond Street', 'Tottenham Court Rd', 'Farringdon',
+    'Liverpool Street', 'Whitechapel', 'Canary Wharf', 'Abbey Wood'],
    [[2022, 0, 7, '構想から四半世紀、地下五十メートルを掘り抜いて開業する']]]
 ];
 
@@ -221,15 +221,23 @@ export const topic = {
 
   focus(g) {
     const { w, h } = g;
+    // The view follows the work rather than trying to hold the whole
+    // network: by 1970 the map does not fit on a phone at a size you can
+    // read the names at, so the camera stays in close and moves around.
     let box = null;
-    for (const r of openRuns(g)) {
-      for (let i = r.from; i <= r.to; i++) {
-        const p = S[r.line[2][i]];
-        if (p) box = growBox(box, p[0], p[1], 1.6);
+    const recent = g.events.filter((e) => g.seen(e.t) && g.year - e.t < 26).slice(-5);
+    const use = recent.length ? recent : [g.event];
+    for (const e of use) {
+      const chain = LINES[e.li][2];
+      for (let i = e.from; i <= e.to; i++) {
+        const p = S[chain[i]];
+        if (p) box = growBox(box, p[0], p[1], 2.2);
       }
     }
     if (!box) box = { x: 9, y: 5.4, w: 4, h: 3 };
     const wide = fitTo(box, w, h, 0.9, 0.56);
+    // and never further out than this, so type stays readable
+    wide.S = Math.max(wide.S, w / 15);
     const e = g.event;
     if (e && g.fresh > 0.01) {
       const chain = LINES[e.li][2];
@@ -240,9 +248,10 @@ export const topic = {
       }
       if (nb) {
         const near = fitTo(nb, w, h, 0.74, 0.46);
-        const k = Math.pow(g.fresh, 0.7) * 0.7;
+        near.S = Math.max(near.S, w / 11);
+        const k = Math.pow(g.fresh, 0.7) * 0.72;
         return { x: lerp(wide.x, near.x, k), y: lerp(wide.y, near.y, k),
-                 S: lerp(wide.S, Math.min(near.S, wide.S * 2.4), k) };
+                 S: lerp(wide.S, Math.min(near.S, wide.S * 2.2), k) };
       }
     }
     return wide;
@@ -376,16 +385,24 @@ export const topic = {
       .sort((a, b) => b.rank - a.rank);
 
     const placed = [];
+    const hits = (b) => placed.some((o) => !(b.x > o.x + o.w || b.x + b.w < o.x ||
+                                             b.y > o.y + o.h || b.y + b.h < o.y));
     for (const q of items) {
       const tw = ctx.measureText(q.name).width;
       const off = q.inter ? 13 : 10;
-      let bx = q.p.x, by = q.p.y;
-      if (q.side === 'l') bx -= off + tw / 2;
-      else if (q.side === 'r') bx += off + tw / 2;
-      else by += q.side === 't' ? -(off + 4) : (off + 5);
-      const box = { x: bx - tw / 2 - 3, y: by - size * 0.62, w: tw + 6, h: size * 1.24 };
-      if (placed.some((o) => !(box.x > o.x + o.w || box.x + box.w < o.x ||
-                               box.y > o.y + o.h || box.y + box.h < o.y))) continue;
+      // the side the data asks for first, then the other three
+      const order = [q.side, 'r', 'l', 't', 'b'];
+      let box = null, bx = 0, by = 0;
+      for (const side of order) {
+        let x = q.p.x, y = q.p.y;
+        if (side === 'l') x -= off + tw / 2;
+        else if (side === 'r') x += off + tw / 2;
+        else y += side === 't' ? -(off + 4) : (off + 5);
+        const b = { x: x - tw / 2 - 3, y: y - size * 0.62, w: tw + 6, h: size * 1.3 };
+        if (b.x < 2 || b.x + b.w > w - 2) continue;
+        if (!hits(b)) { box = b; bx = x; by = y; break; }
+      }
+      if (!box) continue;
       placed.push(box);
       ctx.textAlign = 'center';
       const a = q.age * (q.inter ? 1 : 0.86);
@@ -398,5 +415,5 @@ export const topic = {
     }
   },
 
-  stamp: (y) => String(y)
+  stamp: (y) => String(Math.round(y))
 };

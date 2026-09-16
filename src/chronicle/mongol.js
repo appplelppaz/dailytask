@@ -217,5 +217,5 @@ export const topic = {
     }
   },
 
-  stamp: (y) => String(y)
+  stamp: (y) => String(Math.round(y))
 };

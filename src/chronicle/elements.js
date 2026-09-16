@@ -178,5 +178,5 @@ export const topic = {
     }
   },
 
-  stamp: (y) => (y < 0 ? `前${-y}` : String(y))
+  stamp: (y) => (y < 0 ? `前${Math.round(-y)}` : String(Math.round(y)))
 };
