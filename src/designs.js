@@ -35,6 +35,16 @@ const D = (id, name, engine, prm, pal, comp, mark, sound, meta) =>
 
 export const DESIGNS = [
 
+// ══ the task screen ══════════════════════════════════════════
+D('timer', 'Timer', 'timer',
+  {},
+  P(218, 18, { a: 40, k: 210, mid: 40 }),
+  { type: 'trace', affordance: '', feedback: '' },
+  'signature',
+  S('glass', [0, 7, 12], [7, 12, 19], { s: 170, l: 150 }),
+  { elapsed: '経過した時間', current: 'いまのタスク', remaining: 'のこりの時間' }),
+
+
 // ══ 01–10 ════════════════════════════════════════════════════
 D('fog-atlas', 'Fog Atlas', 'fog',
   { substrate: 'contour', sweep: 'diagonal', layout: 'scatter', density: 86, ridges: 5, soft: 0.13, headSize: 0.34, scale: 1.1 },

@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import {
-  TASKS, resolve, absNow, effectiveNow, scheduleFor, wallClock, dayNumOf,
+  resolve, absNow, effectiveNow, scheduleFor, wallClock, dayNumOf,
   nightKey, nightDayNum, startSecondsFor, startOffsetMin, isPaused, pausedSec,
   OFFSET_MIN, OFFSET_MAX, OFFSET_STEP
 } from './schedule.js';
@@ -15,8 +15,9 @@ import { audio } from './audio.js';
 import { cue, N } from './cues.js';
 import { Scene } from './scene.js';
 import { CompletionControl } from './completion.js';
-import { renderArchive } from './history.js';
+import { renderArchive, TASK_COLORS } from './history.js';
 import { clamp } from './util.js';
+import { hms } from './timer.js';
 
 const COUNT_FROM = 3;      // seconds of countdown before a night begins
 const COUNT_TICK = cue('glass', [N(4)], { spread: 0, durationMs: 150, gain: 0.05, attackMs: 4, releaseMs: 90 });
@@ -42,10 +43,73 @@ let primed = false;        // first tick after load never rings anything
 let startsAtMs = null;     // when the night begins, in wall-clock ms
 let countShown = 0;        // the number on screen, so each one beats once
 
+// One screen, every task, every night. The other engines are still in
+// the repository, but a routine you do at the same time every evening
+// wants the same picture every evening — the point is to read it without
+// thinking, not to be surprised by it.
+const TIMER = DESIGNS.find((d) => d.engine === 'timer');
+
 /** Which world belongs to this task on this night. */
-function designFor(sch, task) {
-  const i = (sch.dayNum * TASKS.length + task.index + (store.prefs.shift | 0)) % DESIGNS.length;
-  return DESIGNS[(i + DESIGNS.length) % DESIGNS.length];
+function designFor() {
+  return TIMER;
+}
+
+/** #rrggbb from the record's palette, as the [h,s,l] the canvas wants. */
+const HSL = {};
+function hslOf(key) {
+  if (HSL[key]) return HSL[key];
+  const hex = TASK_COLORS[key] || '#8899aa';
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  const l = (mx + mn) / 2;
+  let hh = 0, ss = 0;
+  if (d) {
+    ss = d / (1 - Math.abs(2 * l - 1));
+    hh = mx === r ? ((g - b) / d + (g < b ? 6 : 0)) : mx === g ? ((b - r) / d + 2) : ((r - g) / d + 4);
+    hh *= 60;
+  }
+  return (HSL[key] = [hh, ss * 100, l * 100]);
+}
+
+/** A wall-clock label like 19:30, from an absolute second. */
+function atLabel(sec) {
+  const s2 = ((Math.round(sec) % 86400) + 86400) % 86400;
+  const h = Math.floor(s2 / 3600), m = Math.floor((s2 % 3600) / 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** Everything the task screen needs to say where you are in the night. */
+function clockFor(st, now, show, showProgress, paused) {
+  const sch = st.sch;
+  const tasks = sch.tasks.map((t) => ({
+    key: t.key, durSec: t.dur, color: hslOf(t.key),
+    done: store.isComplete(sch.key, t.key)
+  }));
+  const idx = show.task.index;
+  const t = sch.tasks[idx];
+  const dormant = st.mode === 'dormant';
+  const elapsed = dormant ? 0 : clamp(showProgress) * t.dur;
+  const next = sch.tasks[idx + 1];
+  return {
+    state: paused ? 'paused' : dormant ? 'dormant' : showProgress >= 1 ? 'closing' : 'live',
+    taskName: show.task.key,
+    taskIndex: idx,
+    color: hslOf(show.task.key),
+    progress: clamp(showProgress),
+    durSec: t.dur,
+    elapsedSec: elapsed,
+    remainingSec: Math.max(0, t.dur - elapsed),
+    startsInSec: Math.max(0, sch.start - now),
+    startsAtLabel: atLabel(sch.start),
+    tasks,
+    nightTotal: sch.end - sch.start,
+    nightProgress: clamp((now - sch.start) / (sch.end - sch.start)),
+    nightRemainingSec: Math.max(0, sch.end - now),
+    nextName: next ? next.key : '',
+    nextAtLabel: next ? atLabel(next.start) : ''
+  };
 }
 
 const control = new CompletionControl(affordanceEl, () => {
@@ -66,7 +130,7 @@ let current = null;
 function tick() {
   const now = effectiveNow();      // real time, less whatever was spent paused
   const st = resolve(now);
-  const design = designFor(st.sch, st.task);
+  const design = designFor();
   const sessionId = `${st.sch.key}:${st.task.key}`;
   const active = st.mode === 'active';
   const progress = active ? clamp((now - st.task.start) / st.task.dur) : 0;
@@ -108,6 +172,7 @@ function tick() {
   const completed = store.isComplete(show.day, show.task.key);
 
   scene.setDesign(show.design, show.sessionId);
+  scene.state.clock = clockFor(st, now, show, showProgress, isPaused());
   scene.state.progress = showProgress;
   scene.state.completed = completed;
   scene.state.canComplete = !!pending && !completed;
@@ -122,28 +187,30 @@ function tick() {
   const paused = isPaused();
   scene.setPaused(paused);
 
-  taskNameEl.textContent = show.task.key;
+  // the canvas carries the whole screen now; the caption stays empty so the
+  // numbers are never said twice
+  taskNameEl.textContent = '';
   taskNameEl.dataset.state = paused ? 'paused' : pending ? 'closing' : active ? 'live' : 'dormant';
-  worldNameEl.textContent = show.design.name;
+  worldNameEl.textContent = '';
 
   // one line of guidance, only when there is something to say
   if (scene.state.canComplete) {
     // one line, one instruction — the same in every world
     hintEl.textContent = 'チェックをタップして完了';
     affordanceEl.setAttribute('aria-description', `${show.task.key} を完了としてマークします`);
-  } else if (paused) {
-    hintEl.textContent = '一時停止中 — もう一度タップで再開';
-  } else if (!active) {
-    // a world at the very start and a world not yet started look alike, so
-    // say which one this is
-    hintEl.textContent = '開始前';
   } else {
+    // the screen itself says what is happening now
     hintEl.textContent = '';
   }
   if (paused) hintEl.dataset.paused = '1'; else delete hintEl.dataset.paused;
+  // canvas text is invisible to a screen reader, so the stage says it instead
+  const c = scene.state.clock;
+  const said = c.state === 'dormant' ? `${c.taskName} 開始まで ${hms(c.startsInSec)}`
+    : c.state === 'closing' ? `${c.taskName} 完了。チェックをタップしてください`
+    : `${c.taskName} のこり ${hms(c.remainingSec)}`;
   stage.setAttribute('aria-label', paused
-    ? 'タスクの進行は一時停止中。もう一度押すと再開します'
-    : 'タスクの進行を一時停止');
+    ? `${said}。一時停止中。もう一度押すと再開します`
+    : `${said}。押すと一時停止します`);
   stage.setAttribute('aria-pressed', String(paused));
 
   control.setSpec(scene.affordanceSpec());

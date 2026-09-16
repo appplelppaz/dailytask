@@ -76,6 +76,7 @@ export class Scene {
     if (!this.engine || !this.w) return;
     const env = this.env;
     env.p = clamp(this.state.progress);
+    env.clock = this.state.clock;
     env.time = ((this.pausedAt || now) - this.t0) / 1000;
     env.reduced = this.reduced;
     env.w = this.w; env.h = this.h;
@@ -83,7 +84,7 @@ export class Scene {
     this.engine.draw(env);
     this.anchors = this.engine.anchors(env);
 
-    if (this.state.paused) this.drawPaused(env);
+    if (this.state.paused && !this.engine.ownPaused) this.drawPaused(env);
 
     const done = this.state.completed;
     if (!done && this.state.canComplete) this.drawAffordance(env);
@@ -142,7 +143,7 @@ export class Scene {
   tapSpot() {
     const w = this.w, h = this.h;
     const r = Math.max(30, Math.min(44, Math.min(w, h) * 0.078));
-    return { x: w / 2, y: Math.min(h * 0.74, h - (r * 2 + 96)), r };
+    return { x: w / 2, y: Math.min(h * 0.90, h - (r + 28)), r };
   }
 
   drawAffordance(env) {

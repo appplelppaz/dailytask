@@ -36,7 +36,10 @@
   #soundBtn[data-on="0"] .on { display: none; }
   #soundBtn[data-on="1"] .off { display: none; }
 
-  #caption { position: absolute; left: 20px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); max-width: 72vw; }
+  /* the canvas carries the numbers; all that is left here is the one line
+     under the completion mark, so it sits centred beneath it */
+  #caption { position: absolute; left: 0; right: 0; text-align: center;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
   #taskName {
     margin: 0; font-size: clamp(15px, 3.4vw, 19px); font-weight: 500;
     letter-spacing: .38em; color: rgba(255,255,255,.82);
@@ -51,7 +54,7 @@
   }
   #hint {
     margin: 10px 0 0; font-size: 11.5px; font-weight: 300; letter-spacing: .09em; line-height: 1.6;
-    color: rgba(255,255,255,.5); min-height: 1.2em; max-width: 30ch;
+    color: rgba(255,255,255,.5); min-height: 1.2em; margin-inline: auto; max-width: 30ch;
     transition: opacity .6s ease;
   }
   #hint[data-paused] { color: rgba(255,255,255,.88); letter-spacing: .12em; }
