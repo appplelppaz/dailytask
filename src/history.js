@@ -7,7 +7,9 @@
 import { TASKS, dateKey } from './schedule.js';
 import { store } from './store.js';
 
-const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
 
 // Six well-separated hues. Position still carries the meaning, so the
 // colour is reinforcement rather than the only cue.
@@ -43,13 +45,13 @@ function draw(root) {
   // ── month, with a way back and forward ──
   const head = document.createElement('div');
   head.className = 'cal-head';
-  head.appendChild(navButton('‹', -1, root, '前の月'));
+  head.appendChild(navButton('‹', -1, root, 'Previous month'));
   const title = document.createElement('span');
   title.className = 'cal-title';
-  title.textContent = `${shown.y}年${shown.m}月`;
+  title.textContent = `${MONTHS[shown.m - 1]} ${shown.y}`;
   head.appendChild(title);
   const atNow = shown.y === todayParts.y && shown.m === todayParts.m;
-  head.appendChild(navButton('›', 1, root, '次の月', atNow));
+  head.appendChild(navButton('›', 1, root, 'Next month', atNow));
   root.appendChild(head);
 
   const week = document.createElement('div');
@@ -104,9 +106,9 @@ function draw(root) {
     cell.appendChild(dots);
 
     const doneNames = TASKS.filter((_, i) => done[i]).map((t) => t.key);
-    cell.setAttribute('aria-label', future
-      ? `${shown.m}月${d}日`
-      : `${shown.m}月${d}日 ${doneNames.length ? doneNames.join('、') + ' 完了' : '完了なし'}`);
+    const when = `${MONTHS[shown.m - 1]} ${d}`;
+    cell.setAttribute('aria-label', future ? when
+      : `${when} — ${doneNames.length ? doneNames.join(', ') + ' done' : 'nothing done'}`);
     grid.appendChild(cell);
   }
   root.appendChild(grid);

@@ -195,8 +195,8 @@ function tick() {
   // one line of guidance, only when there is something to say
   if (scene.state.canComplete) {
     // one line, one instruction — the same in every world
-    hintEl.textContent = 'チェックをタップして完了';
-    affordanceEl.setAttribute('aria-description', `${show.task.key} を完了としてマークします`);
+    hintEl.textContent = 'Tap the check to finish';
+    affordanceEl.setAttribute('aria-description', `Mark ${show.task.key} complete`);
   } else {
     // the screen itself says what is happening now
     hintEl.textContent = '';
@@ -204,12 +204,12 @@ function tick() {
   if (paused) hintEl.dataset.paused = '1'; else delete hintEl.dataset.paused;
   // canvas text is invisible to a screen reader, so the stage says it instead
   const c = scene.state.clock;
-  const said = c.state === 'dormant' ? `${c.taskName} 開始前`
-    : c.state === 'closing' ? `${c.taskName} 完了。チェックをタップしてください`
-    : `${c.taskName} 実行中`;
+  const said = c.state === 'dormant' ? `${c.taskName}, not started`
+    : c.state === 'closing' ? `${c.taskName} finished. Tap the check.`
+    : `${c.taskName}, in progress`;
   stage.setAttribute('aria-label', paused
-    ? `${said}。一時停止中。もう一度押すと再開します`
-    : `${said}。押すと一時停止します`);
+    ? `${said}. Paused — press again to resume.`
+    : `${said}. Press to pause.`);
   stage.setAttribute('aria-pressed', String(paused));
 
   control.setSpec(scene.affordanceSpec());
@@ -350,7 +350,7 @@ const hhmm = (sec) => {
 
 function renderSettings() {
   const off = startOffsetMin();
-  offsetValue.textContent = off === 0 ? '±0分' : (off > 0 ? `+${off}分` : `−${Math.abs(off)}分`);
+  offsetValue.textContent = off === 0 ? '±0 min' : (off > 0 ? `+${off} min` : `−${Math.abs(off)} min`);
   offsetUp.disabled = off >= OFFSET_MAX;
   offsetDown.disabled = off <= OFFSET_MIN;
   offsetReset.hidden = off === 0;

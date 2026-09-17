@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -170,11 +170,11 @@
 </head>
 <body>
 
-<canvas id="stage" tabindex="0" role="button" aria-pressed="false" aria-label="タスクの進行を一時停止"></canvas>
+<canvas id="stage" tabindex="0" role="button" aria-pressed="false" aria-label="Pause the task"></canvas>
 
 <div id="ui">
   <div id="corner">
-    <button id="soundBtn" type="button" aria-label="音のオンとオフ" aria-pressed="true" data-on="1">
+    <button id="soundBtn" type="button" aria-label="Sound on or off" aria-pressed="true" data-on="1">
       <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9.5a4 4 0 0 1 0 5"/>
       </svg>
@@ -182,18 +182,18 @@
         <path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 10l4 4M21 10l-4 4"/>
       </svg>
     </button>
-    <button id="shiftBtn" type="button" aria-label="別の世界へ切り替える">
+    <button id="shiftBtn" type="button" aria-label="Change the look">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 7h10l-2.5-2.5M20 17H10l2.5 2.5"/><circle cx="18" cy="7" r="2"/><circle cx="6" cy="17" r="2"/>
       </svg>
     </button>
-    <button id="settingsBtn" type="button" aria-label="設定をひらく">
+    <button id="settingsBtn" type="button" aria-label="Open settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3.2"/>
         <path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/>
       </svg>
     </button>
-    <button id="archiveBtn" type="button" aria-label="記録をひらく">
+    <button id="archiveBtn" type="button" aria-label="Open the record">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/>
       </svg>
@@ -209,14 +209,14 @@
 
 <div id="countdown" hidden aria-live="assertive" aria-atomic="true"><span></span></div>
 
-<button id="affordance" type="button" hidden aria-label="タスクを完了としてマーク"></button>
+<button id="affordance" type="button" hidden aria-label="Mark this task complete"></button>
 
 <div id="archive" class="sheet" hidden>
   <div id="archBackdrop" class="sheet-backdrop"></div>
-  <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="記録">
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="Record">
     <div class="sheet-head">
       <h2>RECORD</h2>
-      <button id="archClose" class="sheet-close" type="button" aria-label="とじる">
+      <button id="archClose" class="sheet-close" type="button" aria-label="Close">
         <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
       </button>
     </div>
@@ -226,29 +226,29 @@
 
 <div id="settings" class="sheet" hidden>
   <div id="setBackdrop" class="sheet-backdrop"></div>
-  <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="設定">
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="Settings">
     <div class="sheet-head">
       <h2>SETTINGS</h2>
-      <button id="setClose" class="sheet-close" type="button" aria-label="とじる">
+      <button id="setClose" class="sheet-close" type="button" aria-label="Close">
         <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
       </button>
     </div>
 
-    <p class="set-label">開始時間</p>
+    <p class="set-label">START TIME</p>
     <div class="set-stepper">
-      <button id="offsetDown" type="button" aria-label="開始を10分早める">−</button>
-      <span id="offsetValue" role="status" aria-live="polite">±0分</span>
-      <button id="offsetUp" type="button" aria-label="開始を10分遅らせる">＋</button>
+      <button id="offsetDown" type="button" aria-label="Start ten minutes earlier">−</button>
+      <span id="offsetValue" role="status" aria-live="polite">±0 min</span>
+      <button id="offsetUp" type="button" aria-label="Start ten minutes later">＋</button>
     </div>
 
     <dl class="set-times">
-      <div><dt>平日</dt><dd id="wdTime">19:30</dd></div>
-      <div><dt>土日</dt><dd id="weTime">20:00</dd></div>
+      <div><dt>WEEKDAYS</dt><dd id="wdTime">19:30</dd></div>
+      <div><dt>WEEKENDS</dt><dd id="weTime">20:00</dd></div>
     </dl>
 
-    <button id="offsetReset" class="set-reset" type="button" hidden>もとに戻す</button>
+    <button id="offsetReset" class="set-reset" type="button" hidden>Reset</button>
 
-    <p class="set-note">タスクの長さと順番はそのままに、その夜の開始時刻ごと前後へずらします。今夜だけの調整です — 翌日はデフォルト（平日19:30／土日20:00）に戻ります。<br>画面をタップすると進行を一時停止、もう一度タップで再開します。止めた分だけ、あとのタスクの開始も後ろへずれます。</p>
+    <p class="set-note">Shifts tonight's start time earlier or later, keeping the length and order of the tasks as they are. It applies to tonight only — tomorrow goes back to the default (19:30 on weekdays, 20:00 at the weekend).<br>Tapping the screen pauses the run, and tapping again resumes it. Whatever time is spent paused pushes the later tasks back by the same amount.</p>
   </div>
 </div>
 

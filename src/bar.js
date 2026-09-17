@@ -46,7 +46,7 @@ export const bar = {
     ctx.textBaseline = 'middle';
 
     // ── the name of the task, big enough to read from the piano ──
-    const title = state === 'closing' ? 'おつかれさま' : clock.taskName;
+    const title = state === 'closing' ? 'WELL DONE' : clock.taskName;
     const latin = /^[\x20-\x7e]+$/.test(title);
     let size = U * (latin ? 0.145 : 0.115);
     ctx.letterSpacing = latin ? '0.10em' : '0.04em';
@@ -93,14 +93,14 @@ export const bar = {
     if (state === 'paused') {
       ctx.font = F(500, U * 0.070);
       ctx.fillStyle = css(ink, 0.82);
-      ctx.fillText('一時停止中', w / 2, h * 0.645);
+      ctx.fillText('PAUSED', w / 2, h * 0.645);
       ctx.font = F(400, U * 0.046);
       ctx.fillStyle = css(ink, 0.42);
-      ctx.fillText('タップで再開', w / 2, h * 0.705);
+      ctx.fillText('Tap to resume', w / 2, h * 0.705);
     } else if (state === 'dormant') {
       ctx.font = F(400, U * 0.050);
       ctx.fillStyle = css(ink, 0.34);
-      ctx.fillText('開始前', w / 2, h * 0.645);
+      ctx.fillText('Not started', w / 2, h * 0.645);
     }
 
     ctx.textBaseline = 'alphabetic';

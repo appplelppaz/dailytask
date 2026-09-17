@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>制作過程プレビュー</title>
+<title>Process preview</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
@@ -44,15 +44,15 @@
 <div id="panel">
   <div id="stages"></div>
   <div id="row">
-    <button id="play" type="button" aria-label="再生">▶</button>
-    <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="制作の進み">
+    <button id="play" type="button" aria-label="Play">▶</button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Progress through the work">
     <span id="pct">0%</span>
   </div>
   <div id="works">
-    <button id="prev" type="button" aria-label="前の作品">‹</button>
+    <button id="prev" type="button" aria-label="Previous work">‹</button>
     <p id="label">—</p>
     <span id="work"></span>
-    <button id="next" type="button" aria-label="次の作品">›</button>
+    <button id="next" type="button" aria-label="Next work">›</button>
   </div>
 </div>
 
@@ -83,7 +83,7 @@ function load(i) {
   document.getElementById('work').textContent = `${which + 1} / ${works.length}`;
 }
 
-const NAMES = { ground: '生地', sketch: '下描き', blockIn: '下塗り', modelling: '陰影', colour: '着彩', highlight: 'ハイライト', varnish: '仕上げ' };
+const NAMES = { ground: 'ground', sketch: 'sketch', blockIn: 'block-in', modelling: 'modelling', colour: 'colour', highlight: 'highlights', varnish: 'varnish' };
 for (const [name] of STAGES) {
   const s = document.createElement('span');
   s.textContent = NAMES[name] || name;
