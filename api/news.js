@@ -65,6 +65,7 @@ const MAX_ITEMS = 40;
 const NO_PICTURE_SHARE = 0.3;  // how much of the list may be headlines without one
 const TRANSLATE_BUDGET = 16000; // ms spent translating, at most
 const TRANSLATE_AT_ONCE = 14;
+const DEEPL_BATCH = 40;        // texts per DeepL request; it allows fifty
 
 // Warm instances keep what they have already translated, so the same
 // headline is never sent twice.
@@ -190,15 +191,36 @@ async function readFeed(src) {
 
 /* ── Japanese ───────────────────────────────────────────────── */
 
-async function viaDeepL(text, lang, key) {
-  const res = await fetch('https://api-free.deepl.com/v2/translate', {
+/**
+ * DeepL, in batches. It takes up to fifty texts in one request, which
+ * for forty headlines and forty summaries is four calls instead of
+ * eighty. A free key ends in ":fx" and goes to a different host.
+ */
+async function viaDeepL(texts, lang, key) {
+  const host = /:fx$/.test(key.trim()) ? 'api-free.deepl.com' : 'api.deepl.com';
+  const res = await fetch(`https://${host}/v2/translate`, {
     method: 'POST',
-    headers: { 'Authorization': `DeepL-Auth-Key ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ text, target_lang: 'JA', source_lang: lang.toUpperCase() })
+    headers: {
+      'Authorization': `DeepL-Auth-Key ${key.trim()}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      text: texts,
+      target_lang: 'JA',
+      source_lang: lang.toUpperCase(),
+      preserve_formatting: true
+    })
   });
-  if (!res.ok) throw new Error(res.status);
+  if (!res.ok) {
+    const why = res.status === 403 ? 'the key was refused'
+      : res.status === 456 ? 'the monthly character limit is spent'
+      : `HTTP ${res.status}`;
+    const err = new Error(why);
+    err.fatal = res.status === 403 || res.status === 456;   // no point retrying this run
+    throw err;
+  }
   const d = await res.json();
-  return d.translations[0].text;
+  return (d.translations || []).map((t) => t.text);
 }
 
 async function viaMyMemory(text, lang, email) {
@@ -208,12 +230,12 @@ async function viaMyMemory(text, lang, email) {
   if (!res.ok) throw new Error(res.status);
   const d = await res.json();
   const out = d && d.responseData && d.responseData.translatedText;
-  if (!out || /^(MYMEMORY WARNING|QUERY LENGTH LIMIT)/i.test(out)) throw new Error('quota');
+  if (!out || /^(MYMEMORY WARNING|QUERY LENGTH LIMIT|INVALID)/i.test(out)) throw new Error('quota');
   return out;
 }
 
 async function translate(items, deadline) {
-  const key = process.env.DEEPL_KEY;
+  const key = (process.env.DEEPL_KEY || '').trim();
   const mail = process.env.MYMEMORY_EMAIL;          // raises the free daily limit
   const jobs = [];
   for (const it of items) {
@@ -227,26 +249,65 @@ async function translate(items, deadline) {
   }
   // headlines before bodies: if time runs out, the headline is the part
   // that must be there
-  jobs.sort((a, b) => (a.to === 'ja' ? -1 : 1) - (b.to === 'ja' ? -1 : 1));
+  jobs.sort((a, b) => (a.to === 'ja' ? 0 : 1) - (b.to === 'ja' ? 0 : 1));
+  if (!jobs.length) return key ? 'deepl' : 'mymemory';
+
+  const keep = (job, ja) => {
+    if (!ja || !ja.trim()) return;
+    job.it[job.to] = ja.trim();
+    cache.set(job.text, job.it[job.to]);
+    if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+  };
+
+  let used = 'mymemory';
+  let left = jobs;
+
+  if (key) {
+    used = 'deepl';
+    const byLang = new Map();
+    for (const job of jobs) {
+      if (!byLang.has(job.lang)) byLang.set(job.lang, []);
+      byLang.get(job.lang).push(job);
+    }
+    const failed = [];
+    let dead = false;
+    for (const [lang, group] of byLang) {
+      for (let i = 0; i < group.length && !dead; i += DEEPL_BATCH) {
+        if (Date.now() > deadline) { failed.push(...group.slice(i)); break; }
+        const chunk = group.slice(i, i + DEEPL_BATCH);
+        try {
+          const out = await viaDeepL(chunk.map((j) => j.text), lang, key);
+          chunk.forEach((job, n) => keep(job, out[n]));
+        } catch (e) {
+          // A refused key or a spent quota is not worth retrying on this
+          // run; fall the rest of the way back to the free service so the
+          // screen still gets its Japanese.
+          failed.push(...chunk);
+          if (e && e.fatal) { dead = true; used = 'mymemory'; }
+        }
+      }
+      if (dead) {
+        for (const [l, g] of byLang) if (l !== lang) failed.push(...g.filter((j) => !j.it[j.to]));
+        break;
+      }
+    }
+    left = failed.filter((j) => !j.it[j.to]);
+    if (!left.length) return used;
+  }
 
   let i = 0;
   const worker = async () => {
-    while (i < jobs.length && Date.now() < deadline) {
-      const job = jobs[i++];
+    while (i < left.length && Date.now() < deadline) {
+      const job = left[i++];
       try {
-        const ja = key ? await viaDeepL(job.text, job.lang, key)
-                       : await viaMyMemory(job.text, job.lang, mail);
-        if (ja && ja.trim()) {
-          job.it[job.to] = ja.trim();
-          cache.set(job.text, ja.trim());
-          if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
-        }
+        keep(job, await viaMyMemory(job.text, job.lang, mail));
       } catch {
         /* a headline without its translation still reads */
       }
     }
   };
   await Promise.all(Array.from({ length: TRANSLATE_AT_ONCE }, worker));
+  return used;
 }
 
 /* ── the handler ────────────────────────────────────────────── */
@@ -278,7 +339,7 @@ module.exports = async (req, res) => {
   for (let n = 0; n < room; n++) items.splice((n + 1) * 4, 0, spare[n]);
   const out = items.slice(0, MAX_ITEMS);
 
-  await translate(out, Date.now() + TRANSLATE_BUDGET);
+  const via = await translate(out, Date.now() + TRANSLATE_BUDGET);
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
@@ -290,6 +351,7 @@ module.exports = async (req, res) => {
   res.status(200).send(JSON.stringify({
     updated: Date.now(),
     papers: SOURCES.length,
+    via,
     translated: out.filter((i) => i.ja).length,
     summarised: out.filter((i) => i.bodyJa).length,
     items: out
