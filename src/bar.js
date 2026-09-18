@@ -22,7 +22,7 @@ export const bar = {
   ownPaused: true,
 
   init(env) {
-    return { news: createNews(env.rng), now: null, prev: null, at: -1e9 };
+    return { news: createNews(), now: null, prev: null, at: -1e9 };
   },
 
   draw(env) {

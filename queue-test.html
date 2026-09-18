@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>queue test</title>
+<!--
+  The wire on its own, with nothing drawn.
+
+  A five-hour routine is eighteen hundred headlines; running that through
+  the real screen would take five hours. This page loads the queue and
+  nothing else, so a test can step a fake clock through the whole evening
+  in a few seconds and check that no headline comes round twice, that the
+  next page is fetched before the queue runs dry, and that the Japanese
+  keeps up. See scratchpad/queuetest.js.
+-->
+<script type="module">
+  import { createNews } from '/src/news.js';
+  window.__n = createNews();
+</script>

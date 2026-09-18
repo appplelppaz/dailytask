@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "functions": {
-    "api/news.js": { "maxDuration": 30 }
+    "api/news.js": { "maxDuration": 45 },
+    "api/translate.js": { "maxDuration": 20 }
   },
   "headers": [
     {

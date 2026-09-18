@@ -3,74 +3,151 @@
 //
 // Browsers cannot read another site's feed directly — no newspaper
 // sends the header that would allow it — so this runs on the server
-// instead: it reads the papers' own RSS feeds, pulls out the headline,
-// the picture and the link, translates the headline into Japanese, and
-// hands the lot back as JSON.
+// instead: it reads a hundred feeds the papers publish themselves,
+// pulls out the headline, the opening of the article and the picture,
+// and hands the lot back as JSON.
 //
-// Each language is read in its own language: the British papers in
-// English, the French in French, the Spanish in Spanish, the Chinese in
-// Chinese. The translation is there to help, not to replace — the
-// screen shows the original first.
+// A five-hour routine has room for eighteen hundred headlines, so one
+// pass has to bring back thousands: these hundred-odd feeds between
+// them carry close to four thousand items, which is why so many of
+// them are section feeds — world, politics, business, science,
+// culture. Each language is read in its own language. Taking forty
+// from each leaves comfortable headroom over the five hours rather
+// than running dry at the end of the evening.
 //
-// It is cached at the edge for three minutes, so the papers see about
-// twenty requests an hour from this deployment no matter how many
-// screens are showing it. That is the polite way to do this, and it is
-// also the fast way.
+// Translation is deliberately NOT done for the whole list here — that
+// would be a hundred thousand characters a pass, and no free service
+// will carry it. Only the opening few are translated, so the screen
+// starts in Japanese immediately; the rest are translated by
+// /api/translate as the screen gets to them.
+//
+// Cached at the edge for five minutes, so the papers see a dozen
+// requests an hour from this deployment however many screens are on.
 // ─────────────────────────────────────────────────────────────
 
+const { translate, provider } = require('./_translate.js');
+
+const F = (name, place, lang, url) => ({ name, place, lang, url });
+
 const SOURCES = [
-  // ── English, from Britain ──
-  { name: 'BBC News',        place: 'UK', lang: 'en', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
-  { name: 'BBC News',        place: 'UK', lang: 'en', url: 'https://feeds.bbci.co.uk/news/rss.xml' },
-  { name: 'The Guardian',    place: 'UK', lang: 'en', url: 'https://www.theguardian.com/international/rss' },
-  { name: 'The Guardian',    place: 'UK', lang: 'en', url: 'https://www.theguardian.com/world/rss' },
-  { name: 'Sky News',        place: 'UK', lang: 'en', url: 'https://feeds.skynews.com/feeds/rss/world.xml' },
-  { name: 'The Mirror',      place: 'UK', lang: 'en', url: 'https://www.mirror.co.uk/news/world-news/?service=rss' },
-  { name: 'Metro',           place: 'UK', lang: 'en', url: 'https://metro.co.uk/news/world/feed/' },
-  { name: 'i News',          place: 'UK', lang: 'en', url: 'https://inews.co.uk/feed' },
+  // ── English, from Britain — 34 feeds ──
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/world/rss.xml'),
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/rss.xml'),
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/uk/rss.xml'),
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/business/rss.xml'),
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/politics/rss.xml'),
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/technology/rss.xml'),
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml'),
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/health/rss.xml'),
+  F('BBC News', 'UK', 'en', 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml'),
+  F('BBC Sport', 'UK', 'en', 'https://feeds.bbci.co.uk/sport/rss.xml'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/international/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/world/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/uk-news/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/politics/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/business/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/technology/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/science/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/environment/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/culture/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/football/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/education/rss'),
+  F('The Guardian', 'UK', 'en', 'https://www.theguardian.com/society/rss'),
+  F('Sky News', 'UK', 'en', 'https://feeds.skynews.com/feeds/rss/world.xml'),
+  F('Sky News', 'UK', 'en', 'https://feeds.skynews.com/feeds/rss/uk.xml'),
+  F('Sky News', 'UK', 'en', 'https://feeds.skynews.com/feeds/rss/politics.xml'),
+  F('Sky News', 'UK', 'en', 'https://feeds.skynews.com/feeds/rss/business.xml'),
+  F('Sky News', 'UK', 'en', 'https://feeds.skynews.com/feeds/rss/technology.xml'),
+  F('The Mirror', 'UK', 'en', 'https://www.mirror.co.uk/news/world-news/?service=rss'),
+  F('The Mirror', 'UK', 'en', 'https://www.mirror.co.uk/news/?service=rss'),
+  F('The Mirror', 'UK', 'en', 'https://www.mirror.co.uk/news/politics/?service=rss'),
+  F('Metro', 'UK', 'en', 'https://metro.co.uk/news/world/feed/'),
+  F('Metro', 'UK', 'en', 'https://metro.co.uk/news/feed/'),
+  F('i News', 'UK', 'en', 'https://inews.co.uk/feed'),
+  F('Evening Standard', 'UK', 'en', 'https://www.standard.co.uk/rss'),
 
-  // ── French, from France ──
-  { name: 'Le Monde',        place: 'FR', lang: 'fr', url: 'https://www.lemonde.fr/rss/une.xml' },
-  { name: 'Le Figaro',       place: 'FR', lang: 'fr', url: 'https://www.lefigaro.fr/rss/figaro_actualites.xml' },
-  { name: 'France 24',       place: 'FR', lang: 'fr', url: 'https://www.france24.com/fr/rss' },
-  { name: 'RFI',             place: 'FR', lang: 'fr', url: 'https://www.rfi.fr/fr/rss' },
-  { name: 'Ouest-France',    place: 'FR', lang: 'fr', url: 'https://www.ouest-france.fr/rss/une' },
-  { name: '20 Minutes',      place: 'FR', lang: 'fr', url: 'https://www.20minutes.fr/feeds/rss-une.xml' },
+  // ── French, from France — 23 feeds ──
+  F('Le Monde', 'FR', 'fr', 'https://www.lemonde.fr/rss/une.xml'),
+  F('Le Monde', 'FR', 'fr', 'https://www.lemonde.fr/international/rss_full.xml'),
+  F('Le Monde', 'FR', 'fr', 'https://www.lemonde.fr/politique/rss_full.xml'),
+  F('Le Monde', 'FR', 'fr', 'https://www.lemonde.fr/economie/rss_full.xml'),
+  F('Le Monde', 'FR', 'fr', 'https://www.lemonde.fr/sciences/rss_full.xml'),
+  F('Le Monde', 'FR', 'fr', 'https://www.lemonde.fr/culture/rss_full.xml'),
+  F('Le Figaro', 'FR', 'fr', 'https://www.lefigaro.fr/rss/figaro_actualites.xml'),
+  F('Le Figaro', 'FR', 'fr', 'https://www.lefigaro.fr/rss/figaro_international.xml'),
+  F('Le Figaro', 'FR', 'fr', 'https://www.lefigaro.fr/rss/figaro_economie.xml'),
+  F('Le Figaro', 'FR', 'fr', 'https://www.lefigaro.fr/rss/figaro_politique.xml'),
+  F('Le Figaro', 'FR', 'fr', 'https://www.lefigaro.fr/rss/figaro_sciences.xml'),
+  F('France 24', 'FR', 'fr', 'https://www.france24.com/fr/rss'),
+  F('France 24', 'FR', 'fr', 'https://www.france24.com/fr/france/rss'),
+  F('France 24', 'FR', 'fr', 'https://www.france24.com/fr/europe/rss'),
+  F('RFI', 'FR', 'fr', 'https://www.rfi.fr/fr/rss'),
+  F('RFI', 'FR', 'fr', 'https://www.rfi.fr/fr/monde/rss'),
+  F('RFI', 'FR', 'fr', 'https://www.rfi.fr/fr/france/rss'),
+  F('Ouest-France', 'FR', 'fr', 'https://www.ouest-france.fr/rss/une'),
+  F('Ouest-France', 'FR', 'fr', 'https://www.ouest-france.fr/rss/monde'),
+  F('20 Minutes', 'FR', 'fr', 'https://www.20minutes.fr/feeds/rss-une.xml'),
+  F('20 Minutes', 'FR', 'fr', 'https://www.20minutes.fr/feeds/rss-monde.xml'),
+  F("L'Express", 'FR', 'fr', 'https://www.lexpress.fr/rss/alaune.xml'),
+  F('Courrier Intl', 'FR', 'fr', 'https://www.courrierinternational.com/feed/all/rss.xml'),
 
-  // ── Spanish, from Spain ──
-  { name: 'El País',         place: 'ES', lang: 'es', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada' },
-  { name: 'El País',         place: 'ES', lang: 'es', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/internacional/portada' },
-  { name: 'La Vanguardia',   place: 'ES', lang: 'es', url: 'https://www.lavanguardia.com/rss/home.xml' },
-  { name: 'ABC',             place: 'ES', lang: 'es', url: 'https://www.abc.es/rss/2.0/internacional/' },
-  { name: 'elDiario.es',     place: 'ES', lang: 'es', url: 'https://www.eldiario.es/rss/' },
-  { name: '20minutos',       place: 'ES', lang: 'es', url: 'https://www.20minutos.es/rss/internacional/' },
+  // ── Spanish, from Spain — 18 feeds ──
+  F('El País', 'ES', 'es', 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada'),
+  F('El País', 'ES', 'es', 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/internacional/portada'),
+  F('El País', 'ES', 'es', 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/espana/portada'),
+  F('El País', 'ES', 'es', 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada'),
+  F('El País', 'ES', 'es', 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/ciencia/portada'),
+  F('El País', 'ES', 'es', 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/cultura/portada'),
+  F('La Vanguardia', 'ES', 'es', 'https://www.lavanguardia.com/rss/home.xml'),
+  F('ABC', 'ES', 'es', 'https://www.abc.es/rss/2.0/internacional/'),
+  F('ABC', 'ES', 'es', 'https://www.abc.es/rss/2.0/espana/'),
+  F('ABC', 'ES', 'es', 'https://www.abc.es/rss/2.0/economia/'),
+  F('elDiario.es', 'ES', 'es', 'https://www.eldiario.es/rss/'),
+  F('elDiario.es', 'ES', 'es', 'https://www.eldiario.es/rss/internacional/'),
+  F('20minutos', 'ES', 'es', 'https://www.20minutos.es/rss/internacional/'),
+  F('20minutos', 'ES', 'es', 'https://www.20minutos.es/rss/nacional/'),
+  F('20minutos', 'ES', 'es', 'https://www.20minutos.es/rss/economia/'),
+  F('RTVE', 'ES', 'es', 'https://api2.rtve.es/rss/temas_noticias.xml'),
+  F('El Mundo', 'ES', 'es', 'https://e00-elmundo.uecdn.es/elmundo/rss/internacional.xml'),
+  F('El Mundo', 'ES', 'es', 'https://e00-elmundo.uecdn.es/elmundo/rss/espana.xml'),
 
-  // ── Chinese ──
-  { name: 'BBC 中文',        place: 'CN', lang: 'zh', url: 'https://feeds.bbci.co.uk/zhongwen/simp/rss.xml' },
-  { name: 'RFI 中文',        place: 'CN', lang: 'zh', url: 'https://www.rfi.fr/cn/rss' },
-  { name: '纽约时报中文网',   place: 'CN', lang: 'zh', url: 'https://cn.nytimes.com/rss/' },
-  { name: '人民网',          place: 'CN', lang: 'zh', url: 'http://www.people.com.cn/rss/world.xml' },
-  { name: '中国新闻网',      place: 'CN', lang: 'zh', url: 'https://www.chinanews.com.cn/rss/world.xml' },
-  { name: '中央社',          place: 'CN', lang: 'zh', url: 'https://feeds.feedburner.com/rsscna/intworld' },
-  { name: '联合新闻网',      place: 'CN', lang: 'zh', url: 'https://udn.com/rssfeed/news/2/6638?ch=news' },
-  { name: '自由时报',        place: 'CN', lang: 'zh', url: 'https://news.ltn.com.tw/rss/world.xml' },
-  { name: 'SCMP',            place: 'CN', lang: 'en', url: 'https://www.scmp.com/rss/91/feed' },
-  { name: 'CGTN',            place: 'CN', lang: 'en', url: 'https://www.cgtn.com/subscribe/rss/section/world.xml' }
+  // ── Chinese (and China in English) — 27 feeds ──
+  F('BBC 中文', 'CN', 'zh', 'https://feeds.bbci.co.uk/zhongwen/simp/rss.xml'),
+  F('BBC 中文', 'CN', 'zh', 'https://feeds.bbci.co.uk/zhongwen/trad/rss.xml'),
+  F('RFI 中文', 'CN', 'zh', 'https://www.rfi.fr/cn/rss'),
+  F('纽约时报中文网', 'CN', 'zh', 'https://cn.nytimes.com/rss/'),
+  F('人民网', 'CN', 'zh', 'http://www.people.com.cn/rss/world.xml'),
+  F('人民网', 'CN', 'zh', 'http://www.people.com.cn/rss/politics.xml'),
+  F('人民网', 'CN', 'zh', 'http://www.people.com.cn/rss/finance.xml'),
+  F('人民网', 'CN', 'zh', 'http://www.people.com.cn/rss/society.xml'),
+  F('中国新闻网', 'CN', 'zh', 'https://www.chinanews.com.cn/rss/world.xml'),
+  F('中国新闻网', 'CN', 'zh', 'https://www.chinanews.com.cn/rss/china.xml'),
+  F('中国新闻网', 'CN', 'zh', 'https://www.chinanews.com.cn/rss/finance.xml'),
+  F('中国新闻网', 'CN', 'zh', 'https://www.chinanews.com.cn/rss/scroll-news.xml'),
+  F('中央社', 'CN', 'zh', 'https://feeds.feedburner.com/rsscna/intworld'),
+  F('中央社', 'CN', 'zh', 'https://feeds.feedburner.com/rsscna/mainland'),
+  F('中央社', 'CN', 'zh', 'https://feeds.feedburner.com/rsscna/politics'),
+  F('联合新闻网', 'CN', 'zh', 'https://udn.com/rssfeed/news/2/6638?ch=news'),
+  F('联合新闻网', 'CN', 'zh', 'https://udn.com/rssfeed/news/2/6645?ch=news'),
+  F('自由时报', 'CN', 'zh', 'https://news.ltn.com.tw/rss/world.xml'),
+  F('自由时报', 'CN', 'zh', 'https://news.ltn.com.tw/rss/politics.xml'),
+  F('自由时报', 'CN', 'zh', 'https://news.ltn.com.tw/rss/business.xml'),
+  F('SCMP', 'CN', 'zh', 'https://www.scmp.com/rss/91/feed'),
+  F('SCMP', 'CN', 'zh', 'https://www.scmp.com/rss/4/feed'),
+  F('SCMP', 'CN', 'zh', 'https://www.scmp.com/rss/2/feed'),
+  F('CGTN', 'CN', 'zh', 'https://www.cgtn.com/subscribe/rss/section/world.xml'),
+  F('CGTN', 'CN', 'zh', 'https://www.cgtn.com/subscribe/rss/section/china.xml'),
+  F('DW 中文', 'CN', 'zh', 'https://rss.dw.com/rdf/rss-chi-all'),
+  F('德国之声', 'CN', 'zh', 'https://rss.dw.com/xml/rss-chi-all'),
 ];
 
-const PER_SOURCE = 5;          // headlines taken from each paper
-const BODY_MAX = 300;          // characters of the article's opening kept
+const PER_SOURCE = 40;         // headlines taken from each feed
+const BODY_MAX = 240;          // characters of the article's opening kept
 const FEED_TIMEOUT = 6000;     // ms before a slow paper is left out
-const MAX_ITEMS = 40;
-const NO_PICTURE_SHARE = 0.3;  // how much of the list may be headlines without one
-const TRANSLATE_BUDGET = 16000; // ms spent translating, at most
-const TRANSLATE_AT_ONCE = 14;
-const DEEPL_BATCH = 40;        // texts per DeepL request; it allows fifty
-
-// Warm instances keep what they have already translated, so the same
-// headline is never sent twice.
-const cache = new Map();
-const CACHE_MAX = 600;
+const MAX_ITEMS = 3200;        // the whole pool: around eight hours at ten seconds each
+const PAGE = 400;              // handed over a page at a time, so a phone is not sent it all
+const TRANSLATE_FIRST = 24;    // enough to start reading while the rest catches up
+const TRANSLATE_BUDGET = 9000; // ms
 
 const ENTITIES = {
   amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
@@ -175,9 +252,9 @@ async function readFeed(src) {
         lang: src.lang,
         title,
         body: pickBody(block, title),
-        link: tag(block, 'link'),
         image: pickImage(block, src.url),
-        at: Date.parse(tag(block, 'pubDate') || tag(block, 'dc:date')) || null
+        at: Date.parse(tag(block, 'pubDate') || tag(block, 'dc:date')) || null,
+        link: tag(block, 'link')
       });
       if (out.length >= PER_SOURCE) break;
     }
@@ -189,171 +266,71 @@ async function readFeed(src) {
   }
 }
 
-/* ── Japanese ───────────────────────────────────────────────── */
-
-/**
- * DeepL, in batches. It takes up to fifty texts in one request, which
- * for forty headlines and forty summaries is four calls instead of
- * eighty. A free key ends in ":fx" and goes to a different host.
- */
-async function viaDeepL(texts, lang, key) {
-  const host = /:fx$/.test(key.trim()) ? 'api-free.deepl.com' : 'api.deepl.com';
-  const res = await fetch(`https://${host}/v2/translate`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `DeepL-Auth-Key ${key.trim()}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      text: texts,
-      target_lang: 'JA',
-      source_lang: lang.toUpperCase(),
-      preserve_formatting: true
-    })
-  });
-  if (!res.ok) {
-    const why = res.status === 403 ? 'the key was refused'
-      : res.status === 456 ? 'the monthly character limit is spent'
-      : `HTTP ${res.status}`;
-    const err = new Error(why);
-    err.fatal = res.status === 403 || res.status === 456;   // no point retrying this run
-    throw err;
-  }
-  const d = await res.json();
-  return (d.translations || []).map((t) => t.text);
-}
-
-async function viaMyMemory(text, lang, email) {
-  const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${lang}|ja`
-    + (email ? `&de=${encodeURIComponent(email)}` : '');
-  const res = await fetch(u, { headers: { 'User-Agent': 'night-routine/1.0' } });
-  if (!res.ok) throw new Error(res.status);
-  const d = await res.json();
-  const out = d && d.responseData && d.responseData.translatedText;
-  if (!out || /^(MYMEMORY WARNING|QUERY LENGTH LIMIT|INVALID)/i.test(out)) throw new Error('quota');
-  return out;
-}
-
-async function translate(items, deadline) {
-  const key = (process.env.DEEPL_KEY || '').trim();
-  const mail = process.env.MYMEMORY_EMAIL;          // raises the free daily limit
-  const jobs = [];
-  for (const it of items) {
-    for (const [from, to] of [['title', 'ja'], ['body', 'bodyJa']]) {
-      const text = it[from];
-      if (!text || it.lang === 'ja') continue;
-      const hit = cache.get(text);
-      if (hit) { it[to] = hit; continue; }
-      jobs.push({ it, to, text, lang: it.lang });
-    }
-  }
-  // headlines before bodies: if time runs out, the headline is the part
-  // that must be there
-  jobs.sort((a, b) => (a.to === 'ja' ? 0 : 1) - (b.to === 'ja' ? 0 : 1));
-  if (!jobs.length) return key ? 'deepl' : 'mymemory';
-
-  const keep = (job, ja) => {
-    if (!ja || !ja.trim()) return;
-    job.it[job.to] = ja.trim();
-    cache.set(job.text, job.it[job.to]);
-    if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
-  };
-
-  let used = 'mymemory';
-  let left = jobs;
-
-  if (key) {
-    used = 'deepl';
-    const byLang = new Map();
-    for (const job of jobs) {
-      if (!byLang.has(job.lang)) byLang.set(job.lang, []);
-      byLang.get(job.lang).push(job);
-    }
-    const failed = [];
-    let dead = false;
-    for (const [lang, group] of byLang) {
-      for (let i = 0; i < group.length && !dead; i += DEEPL_BATCH) {
-        if (Date.now() > deadline) { failed.push(...group.slice(i)); break; }
-        const chunk = group.slice(i, i + DEEPL_BATCH);
-        try {
-          const out = await viaDeepL(chunk.map((j) => j.text), lang, key);
-          chunk.forEach((job, n) => keep(job, out[n]));
-        } catch (e) {
-          // A refused key or a spent quota is not worth retrying on this
-          // run; fall the rest of the way back to the free service so the
-          // screen still gets its Japanese.
-          failed.push(...chunk);
-          if (e && e.fatal) { dead = true; used = 'mymemory'; }
-        }
-      }
-      if (dead) {
-        for (const [l, g] of byLang) if (l !== lang) failed.push(...g.filter((j) => !j.it[j.to]));
-        break;
-      }
-    }
-    left = failed.filter((j) => !j.it[j.to]);
-    if (!left.length) return used;
-  }
-
-  let i = 0;
-  const worker = async () => {
-    while (i < left.length && Date.now() < deadline) {
-      const job = left[i++];
-      try {
-        keep(job, await viaMyMemory(job.text, job.lang, mail));
-      } catch {
-        /* a headline without its translation still reads */
-      }
-    }
-  };
-  await Promise.all(Array.from({ length: TRANSLATE_AT_ONCE }, worker));
-  return used;
-}
-
 /* ── the handler ────────────────────────────────────────────── */
 
 module.exports = async (req, res) => {
   const lists = await Promise.all(SOURCES.map(readFeed));
 
-  // Interleave the papers rather than run them in blocks, so the screen
-  // moves from London to Paris to Beijing instead of showing five of the
-  // same masthead in a row. Headlines with a picture come first; a few
-  // without are let in so the Chinese papers, which mostly publish none,
-  // are not shut out.
+  // Interleave the feeds rather than run them in blocks, so the screen
+  // moves from London to Paris to Beijing instead of showing twenty-five
+  // of one masthead in a row. Each round starts at a different feed, so
+  // when the list is cut short it is not the same languages that lose
+  // out every time. Headlines with a picture come first; those without
+  // are let in so the Chinese papers, which mostly publish none, are not
+  // shut out.
   const items = [];
   const spare = [];
   const seen = new Set();
   for (let i = 0; i < PER_SOURCE; i++) {
-    // Each round starts at a different paper, so when the list is cut
-    // short it is not always the same languages that are cut.
     const offset = i * 7;
     for (let k = 0; k < lists.length; k++) {
-      const list = lists[(k + offset) % lists.length];
-      const it = list[i];
+      const it = lists[(k + offset) % lists.length][i];
       if (!it || seen.has(it.title)) continue;
       seen.add(it.title);
       (it.image ? items : spare).push(it);
     }
   }
-  const room = Math.min(spare.length, Math.round(MAX_ITEMS * NO_PICTURE_SHARE));
-  for (let n = 0; n < room; n++) items.splice((n + 1) * 4, 0, spare[n]);
-  const out = items.slice(0, MAX_ITEMS);
+  for (let n = 0; n < spare.length; n++) items.splice((n + 1) * 4, 0, spare[n]);
+  const pool = items.slice(0, MAX_ITEMS);
 
-  const via = await translate(out, Date.now() + TRANSLATE_BUDGET);
+  // Handed over a page at a time. The whole pool in one response is most
+  // of a megabyte, and a phone polling that every few minutes for five
+  // hours would be paying for headlines it may never reach.
+  const q = new URL(req.url || '/', 'http://x').searchParams;
+  const offset = Math.max(0, Math.min(MAX_ITEMS, parseInt(q.get('offset'), 10) || 0));
+  const limit = Math.max(1, Math.min(PAGE, parseInt(q.get('limit'), 10) || PAGE));
+  const out = pool.slice(offset, offset + limit);
+
+  // Only the first page gets its opening headlines translated here, so
+  // the screen starts in Japanese; /api/translate does the rest as the
+  // screen reaches them.
+  let via = provider();
+  if (!offset) {
+    const jobs = [];
+    for (const it of out.slice(0, TRANSLATE_FIRST)) {
+      jobs.push({ text: it.title, lang: it.lang });
+      if (it.body) jobs.push({ text: it.body, lang: it.lang });
+    }
+    const done = await translate(jobs, Date.now() + TRANSLATE_BUDGET);
+    via = done.via || via;
+    for (const it of out) {
+      const t = done.out.get(it.title);
+      if (t) it.ja = t;
+      const b = it.body && done.out.get(it.body);
+      if (b) it.bodyJa = b;
+    }
+  }
+  for (const it of out) if (it.bodyJa) delete it.body;    // never shown once translated
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  // The original opening is only sent when its translation is missing —
-  // otherwise it is weight on the wire for something never shown.
-  for (const it of out) if (it.bodyJa) delete it.body;
-
   res.status(200).send(JSON.stringify({
     updated: Date.now(),
-    papers: SOURCES.length,
+    feeds: SOURCES.length,
     via,
-    translated: out.filter((i) => i.ja).length,
-    summarised: out.filter((i) => i.bodyJa).length,
+    total: pool.length,
+    offset,
     items: out
   }));
 };

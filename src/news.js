@@ -1,95 +1,205 @@
 // ─────────────────────────────────────────────────────────────
 // The wire.
 //
-// Headlines and their pictures, from the papers' own feeds by way of
-// the small server function in /api/news. It is polled every few
-// minutes rather than on every change of headline: the papers update
-// on the order of minutes, and there is no sense asking more often
-// than they publish.
+// A five-hour routine has room for about eighteen hundred headlines, so
+// this keeps a queue of hundreds rather than a handful, works through
+// it in order and never shows the same one twice until the queue is
+// exhausted. New headlines arriving from a later poll go to the front,
+// because what has just happened is worth more than what happened an
+// hour ago.
 //
-// A picture is never shown before it has loaded, so a headline and the
-// wrong photograph are never on screen together.
+// Japanese is fetched thirty headlines ahead of where the screen is,
+// in batches — translating the whole queue up front would spend a
+// month of free translation quota in a single evening, and most of it
+// on headlines nobody would reach, while translating one at a time
+// would be a request every ten seconds all evening.
 // ─────────────────────────────────────────────────────────────
 
-const POLL = 180000;         // ms between refreshes of the list
+const POLL = 240000;         // ms between refreshes of the list
 const RETRY = 20000;         // ms before trying again after a failure
 const RETRY_MAX = 300000;    // ms — the wait doubles up to this
+const LOOKAHEAD = 30;        // headlines translated ahead of the one on screen
+const BATCH_MIN = 12;        // texts worth waiting for before asking
+const KEEP = 2600;           // headlines held in the queue — five hours is 1,800
+const LOW = 150;             // when fewer than this are left, fetch the next page
+const AT_ONCE = 4;           // pictures being fetched at any one time
+const STUCK = 15000;         // ms after which a picture is presumed lost
+const WAIT = 2500;           // ms the screen waits for a picture before going without
 
-export function createNews(rng) {
+export function createNews() {
   const st = {
-    items: [],               // as delivered, newest first
-    ready: [],               // those whose picture has loaded
-    seen: new Set(),
-    idx: 0,
-    at: 0,                   // when the list was last fetched
+    queue: [],               // everything known, in the order it will be shown
+    at: 0,                   // how far through the queue the screen has got
+    seen: new Set(),         // titles, so a headline is never queued twice
+    fetched: 0,              // when the list was last pulled
+    next: 0,                 // the offset of the next page to ask for
+    total: 0,                // how many the server has in all
+    paging: false,
     blocked: 0,
     fails: 0,
-    loading: 0
+    asking: false,           // a translation request is in flight
+    jaBlocked: 0,            // when the translator may be asked again
+    jaFails: 0,
+    via: ''
   };
 
+  const flight = new Set();  // items whose picture is on its way
+
+  function inFlight() {
+    const now = Date.now();
+    for (const it of flight) if (now - it.began > STUCK) flight.delete(it);
+    return flight.size;
+  }
+
+  // A picture is fetched a little ahead of the screen. Only a few at a
+  // time, so a slow paper cannot hold up the rest; an image that never
+  // answers ages out of that budget instead of jamming it shut.
   function preload(item) {
-    if (!item.image) { st.ready.push(item); return; }   // nothing to wait for
-    if (st.loading > 3) return;
-    st.loading++;
+    if (!item.image || item.img !== undefined || item.tried) return;
+    if (inFlight() >= AT_ONCE) return;
+    item.tried = true;
+    item.began = Date.now();
+    flight.add(item);
     const img = new Image();
     img.decoding = 'async';
     img.referrerPolicy = 'no-referrer';
-    img.onload = () => { st.loading--; item.img = img; st.ready.push(item); };
-    img.onerror = () => { st.loading--; };
+    img.onload = () => { flight.delete(item); item.img = img; };
+    img.onerror = () => { flight.delete(item); item.img = null; };
     img.src = item.image;
+  }
+
+  async function load(offset) {
+    const res = await fetch(`/api/news?offset=${offset}`, { cache: 'no-store' });
+    if (res.status === 404) { st.blocked = Date.now() + 3600000; return 0; }  // no server function here
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    st.fails = 0;
+    st.via = data.via || st.via;
+    st.total = data.total || st.total;
+    const fresh = (data.items || []).filter((it) => it.title && !st.seen.has(it.title));
+    for (const it of fresh) st.seen.add(it.title);
+    if (offset) st.queue.push(...fresh);          // a later page goes on the end
+    else st.queue.splice(st.at, 0, ...fresh);     // what has just happened goes next
+    if (st.queue.length > KEEP) st.queue.splice(0, st.queue.length - KEEP);
+    return (data.items || []).length;
   }
 
   async function refresh() {
     const now = Date.now();
-    if (now < st.blocked || (st.at && now - st.at < POLL)) return;
-    st.at = now;
+    if (now < st.blocked) return;
+    // the front page again, for whatever the papers have put out since
+    if (!st.fetched || now - st.fetched >= POLL) {
+      st.fetched = now;
+      try {
+        const n = await load(0);
+        if (n && !st.next) st.next = n;
+      } catch {
+        st.fails++;
+        st.blocked = Date.now() + Math.min(RETRY_MAX, RETRY * Math.pow(2, st.fails - 1));
+      }
+      return;
+    }
+    // running low, and the server has more: take the next page
+    if (!st.paging && st.next && st.next < st.total && st.queue.length - st.at < LOW) {
+      st.paging = true;
+      try {
+        const n = await load(st.next);
+        st.next += n || 0;
+      } catch {
+        /* the next poll will try again */
+      } finally {
+        st.paging = false;
+      }
+    }
+  }
+
+  /** Ask for the Japanese of the next few, in one request. */
+  async function askJapanese() {
+    if (st.asking || Date.now() < st.jaBlocked) return;
+    const texts = [];
+    const window = st.queue.slice(st.at, st.at + LOOKAHEAD);
+    for (const it of window) {
+      if (!it.ja) texts.push({ text: it.title, lang: it.lang });
+      if (it.body && !it.bodyJa) texts.push({ text: it.body, lang: it.lang });
+    }
+    if (!texts.length) return;
+    // One request for sixty texts costs no more than one for two, so
+    // wait for a decent batch — unless the next headline up is still in
+    // its own language, in which case it goes now.
+    if (texts.length < BATCH_MIN && (!window[0] || window[0].ja)) return;
+    st.asking = true;
     try {
-      const res = await fetch('/api/news', { cache: 'no-store' });
-      if (res.status === 404) {
-        // The site is being served without its server function — that is a
-        // standing fact, not a hiccup, so stop asking and let the screen
-        // fall back to the plain bar.
-        st.blocked = Date.now() + 3600000;
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts: texts.slice(0, 60) })
+      });
+      // No translator here at all: the site is running without its
+      // server functions. Stop asking for an hour.
+      if (res.status === 404 || res.status === 405 || res.status === 501) {
+        st.jaBlocked = Date.now() + 3600000;
         return;
       }
       if (!res.ok) throw new Error(res.status);
-      const data = await res.json();
-      st.fails = 0;
-      const fresh = (data.items || []).filter((it) => it.title && !st.seen.has(it.title));
-      for (const it of fresh) st.seen.add(it.title);
-      // newest at the front, and the queue never grows without bound
-      st.items = fresh.concat(st.items).slice(0, 80);
-      for (const it of fresh.slice(0, 6)) preload(it);
+      const { ja, via } = await res.json();
+      st.jaFails = 0;
+      if (via) st.via = via;
+      for (const it of window) {
+        if (!it.ja && ja[it.title]) it.ja = ja[it.title];
+        if (it.body && !it.bodyJa && ja[it.body]) it.bodyJa = ja[it.body];
+      }
     } catch {
-      st.fails++;
-      st.blocked = Date.now() + Math.min(RETRY_MAX, RETRY * Math.pow(2, st.fails - 1));
+      // Something went wrong on the way. Back off rather than ask again
+      // on the next frame; the headline reads perfectly well in its own
+      // language in the meantime.
+      st.jaFails++;
+      st.jaBlocked = Date.now() + Math.min(RETRY_MAX, RETRY * Math.pow(2, st.jaFails - 1));
+    } finally {
+      st.asking = false;
     }
   }
 
   return {
-    /** Called every frame; does nothing most of the time. */
+    /** Called every frame; nearly always does nothing. */
     pump() {
       refresh();
-      // keep a few pictures loaded ahead of the one on screen
-      if (st.ready.length < 4) {
-        for (const it of st.items) {
-          if (!it.img && !it.tried) { it.tried = true; preload(it); break; }
-        }
-      }
+      askJapanese();
+      for (const it of st.queue.slice(st.at, st.at + 4)) preload(it);
     },
-    /** The next headline whose picture is ready, or null. */
+    /**
+     * The next headline. Waits for its picture if it is still coming,
+     * but not for its translation — the original is enough to be going
+     * on with, and the Japanese usually arrives before the change.
+     */
     take() {
-      if (!st.ready.length) return null;
-      const it = st.ready[st.idx % st.ready.length];
-      st.idx++;
-      // once everything has been round once, prefer anything newly arrived
-      if (st.idx >= st.ready.length && st.ready.length > 12) {
-        st.ready = st.ready.slice(-12);
-        st.idx = 0;
+      const now = Date.now();
+      for (let n = 0; n < 8; n++) {
+        const it = st.queue[st.at];
+        if (!it) {
+          if (!st.queue.length) return null;
+          st.at = 0;                          // round again; better than a blank screen
+          continue;
+        }
+        // Its picture is still on its way. Wait a couple of seconds —
+        // the caller comes back every frame, so nothing is lost — and
+        // then put the headline up without it. The wait is counted from
+        // the moment the screen asked for it, not from the moment the
+        // fetch started, or a busy loader could hold a headline back
+        // for ever.
+        if (it.image && it.img === undefined) {
+          if (!it.since) it.since = now;
+          preload(it);
+          if (now - it.since < WAIT) return null;
+          it.img = null;
+        }
+        st.at++;
+        return it;              // if its picture never arrived, the headline still stands
       }
-      return it;
+      return null;
     },
-    get ready() { return st.ready.length; },
-    get known() { return st.items.length; }
+    get ready() { return st.queue.length - st.at; },
+    get known() { return st.queue.length; },
+    get total() { return st.total; },
+    get via() { return st.via; }
   };
 }
