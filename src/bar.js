@@ -1,29 +1,28 @@
 // ─────────────────────────────────────────────────────────────
 // The task screen.
 //
-// A photograph, changed every three seconds, and a thin bar along the
-// bottom that fills as the task runs. Nothing counts down and nothing is
-// measured in figures: the bar is small on purpose, because it only has
-// to be glanced at, and the picture is what the room is looking at.
+// The news, and a thin bar along the bottom that fills as the task
+// runs. A headline and its photograph from one of the papers, changed
+// every few seconds, with the masthead named above it; the bar is small
+// on purpose, because it only has to be glanced at.
 //
-// The pictures come from people who post them; the loader in photos.js
-// says where from and how it behaves when the network is not there. If
-// no photo has arrived, this screen is simply dark, which is what it was
-// before, and everything still works.
+// Nothing here counts down and nothing is measured in figures. If the
+// wire is not reachable — no connection, or the site running without
+// its server function — the screen falls back to exactly what it was:
+// the name of the task, large, above a bar.
 // ─────────────────────────────────────────────────────────────
 
 import { clamp, css, TAU } from './util.js';
-import { createPhotos, cover } from './photos.js';
+import { createNews } from './news.js';
 
-const SWAP = 3;          // seconds each photo is held
-const FADE = 0.9;        // seconds of cross-fade between two photos
+const HOLD = 7;          // seconds a headline stays on screen
+const FADE = 0.9;        // seconds of cross-fade between two
 
 export const bar = {
   ownPaused: true,
 
   init(env) {
-    const tag = Math.floor(env.rng() * 1e9).toString(36);
-    return { photos: createPhotos(tag, env.rng), now: null, prev: null, at: -1e9 };
+    return { news: createNews(env.rng), now: null, prev: null, at: -1e9 };
   },
 
   draw(env) {
@@ -37,25 +36,20 @@ export const bar = {
     const state = clock.state;
     const p = clamp(clock.progress);
     const F = (weight, px) =>
-      `${weight} ${Math.round(px)}px Inter, system-ui, "Hiragino Sans", sans-serif`;
+      `${weight} ${Math.round(px)}px Inter, system-ui, "Hiragino Sans", "Noto Sans CJK JP", sans-serif`;
 
-    // ── the pictures ──
-    // Only while the task is actually running: there is no reason to
-    // spend a phone's data on a screen nobody is sitting in front of.
-    const wants = state !== 'dormant';
-    if (wants) {
-      // Asked for at about two thirds of the screen's pixels: these sit
-      // behind a scrim and are dimmed, so the difference cannot be seen,
-      // and it is a third of the data on a phone.
-      const dpr = Math.min(2, devicePixelRatio || 1) * 0.66;
-      st.photos.pump(Math.min(900, Math.round(w * dpr)), Math.min(1600, Math.round(h * dpr)));
-      if (time - st.at >= SWAP || !st.now) {
-        const next = st.photos.take();
+    // ── the wire ──
+    // Only while the task is running: there is no reason to poll the
+    // papers for a screen nobody is sitting in front of.
+    if (state !== 'dormant') {
+      st.news.pump();
+      if (time - st.at >= HOLD || !st.now) {
+        const next = st.news.take();
         if (next && next !== st.now) {
           st.prev = st.now;
           st.now = next;
           st.at = time;
-        }                               // nothing yet: try again next frame
+        }
       }
     }
 
@@ -68,32 +62,31 @@ export const bar = {
 
     const held = state === 'paused';
     const shade = held ? 0.34 : state === 'closing' ? 0.42 : 1;
-    if (st.now) {
+    const item = st.now;
+    if (item) {
       const age = time - st.at;
       const inAlpha = clamp(age / FADE);
-      // the one going out, underneath
-      if (st.prev && inAlpha < 1) {
+      if (st.prev && st.prev.img && inAlpha < 1) {
         ctx.globalAlpha = shade;
-        cover(ctx, st.prev, w, h, reduced ? 1 : 1 + Math.min(0.05, (age + SWAP) * 0.008));
+        cover(ctx, st.prev.img, w, h, reduced ? 1 : 1 + Math.min(0.04, (age + HOLD) * 0.003));
       }
       ctx.globalAlpha = shade * (st.prev ? inAlpha : 1);
-      // a slow drift, so a still picture does not look like a frozen screen
-      cover(ctx, st.now, w, h, reduced ? 1 : 1 + Math.min(0.05, age * 0.008));
+      cover(ctx, item.img, w, h, reduced ? 1 : 1 + Math.min(0.04, age * 0.003));
       ctx.globalAlpha = 1;
 
-      // enough shade at top and bottom to keep the lettering readable
-      const top = ctx.createLinearGradient(0, 0, 0, h * 0.22);
-      top.addColorStop(0, 'rgba(0,0,0,.62)');
+      // the picture is a background for words, so it is shaded for them
+      const top = ctx.createLinearGradient(0, 0, 0, h * 0.20);
+      top.addColorStop(0, 'rgba(0,0,0,.6)');
       top.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = top;
-      ctx.fillRect(0, 0, w, h * 0.22);
-      const foot = ctx.createLinearGradient(0, h, 0, h * 0.74);
-      foot.addColorStop(0, 'rgba(0,0,0,.70)');
+      ctx.fillRect(0, 0, w, h * 0.20);
+      const foot = ctx.createLinearGradient(0, h, 0, h * 0.42);
+      foot.addColorStop(0, 'rgba(0,0,0,.86)');
+      foot.addColorStop(0.45, 'rgba(0,0,0,.66)');
       foot.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = foot;
-      ctx.fillRect(0, h * 0.74, w, h * 0.26);
+      ctx.fillRect(0, h * 0.42, w, h * 0.58);
     } else {
-      // no picture yet: the task's colour, faintly, so the screen is not blank
       const wash = ctx.createRadialGradient(w / 2, h * 0.46, 0, w / 2, h * 0.46, Math.max(w, h) * 0.7);
       wash.addColorStop(0, css(col, 0.12));
       wash.addColorStop(1, css(col, 0));
@@ -101,41 +94,66 @@ export const bar = {
       ctx.fillRect(0, 0, w, h);
     }
 
-    const photo = !!st.now;
     ctx.textBaseline = 'middle';
 
     // ── the name of the task ──
-    // Large in the middle when there is no picture to look at; a caption
-    // in the corner when there is, clear of the buttons on the right.
-    const big = !photo || state === 'closing';
+    const big = !item || state === 'closing';
     const title = state === 'closing' ? 'WELL DONE' : clock.taskName;
     const latin = /^[\x20-\x7e]+$/.test(title);
-    let size = U * (big ? (latin ? 0.145 : 0.115) : 0.055);
+    let size = U * (big ? (latin ? 0.145 : 0.115) : 0.048);
     ctx.letterSpacing = latin ? '0.10em' : '0.04em';
     ctx.font = F(600, size);
-    const room = big ? w * 0.86 : w * 0.46;
-    while (ctx.measureText(title).width > room && size > U * 0.042) {
+    const room = big ? w * 0.86 : w * 0.42;
+    while (ctx.measureText(title).width > room && size > U * 0.038) {
       size *= 0.94;
       ctx.font = F(600, size);
     }
     ctx.textAlign = big ? 'center' : 'left';
     const tx = big ? w / 2 : w * 0.06;
-    const ty = big ? h * 0.42 : h * 0.078;
-    if (photo) {
+    const ty = big ? h * 0.42 : h * 0.072;
+    if (item) {
       ctx.fillStyle = 'rgba(0,0,0,.6)';
       ctx.fillText(title, tx, ty + Math.max(1.5, U * 0.005));
     }
     ctx.fillStyle = state === 'dormant' ? css(ink, 0.34)
       : big ? css(col, 0.97, 22)
-      : css(ink, 0.95);
+      : css(ink, 0.9);
     ctx.fillText(title, tx, ty);
     ctx.letterSpacing = '0px';
-    ctx.textAlign = 'center';
+
+    // ── the headline ──
+    if (item && !big) {
+      const x = w * 0.06, right = w * 0.94;
+      const bottom = h * 0.90;
+      const fresh = clamp((time - st.at) / 0.5);          // it arrives, it does not blink on
+
+      ctx.textAlign = 'left';
+      ctx.font = F(400, Math.max(18, U * 0.062));
+      const lines = layout(ctx, item.title, right - x, 4);
+      const lh = Math.max(24, U * 0.078);
+      let y = bottom - (lines.length - 1) * lh;
+
+      // masthead, above the headline
+      ctx.globalAlpha = fresh;
+      ctx.font = F(600, Math.max(12, U * 0.032));
+      ctx.letterSpacing = '0.18em';
+      ctx.fillStyle = css(col, 0.95, 20);
+      ctx.fillText(item.source.toUpperCase(), x, y - lh * 0.95);
+      ctx.letterSpacing = '0px';
+
+      ctx.font = F(400, Math.max(18, U * 0.062));
+      for (const line of lines) {
+        ctx.fillStyle = 'rgba(0,0,0,.75)';
+        ctx.fillText(line, x + 1.5, y + 2);
+        ctx.fillStyle = css(ink, 0.98);
+        ctx.fillText(line, x, y);
+        y += lh;
+      }
+      ctx.globalAlpha = 1;
+    }
 
     // ── the bar ──
-    // A thin line along the foot of the screen when there is a picture
-    // behind it; the whole subject of the screen when there is not.
-    const small = photo;
+    const small = !!item;
     const bx = small ? w * 0.05 : w * 0.09;
     const bw = w - bx * 2;
     const bh = small ? Math.max(5, U * 0.016) : Math.max(12, U * 0.046);
@@ -165,20 +183,21 @@ export const bar = {
     }
 
     // ── a word, only when there is one worth saying ──
+    ctx.textAlign = 'center';
     if (held) {
-      if (photo) {
-        const veil = ctx.createRadialGradient(w / 2, h * 0.67, 0, w / 2, h * 0.67, U * 0.62);
-        veil.addColorStop(0, 'rgba(0,0,0,.6)');
+      if (item) {
+        const veil = ctx.createRadialGradient(w / 2, h * 0.5, 0, w / 2, h * 0.5, U * 0.6);
+        veil.addColorStop(0, 'rgba(0,0,0,.66)');
         veil.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = veil;
-        ctx.fillRect(0, h * 0.42, w, h * 0.5);
+        ctx.fillRect(0, h * 0.25, w, h * 0.5);
       }
       ctx.font = F(500, U * 0.070);
-      ctx.fillStyle = css(ink, 0.9);
-      ctx.fillText('PAUSED', w / 2, h * 0.645);
+      ctx.fillStyle = css(ink, 0.92);
+      ctx.fillText('PAUSED', w / 2, h * 0.47);
       ctx.font = F(400, U * 0.046);
-      ctx.fillStyle = css(ink, 0.5);
-      ctx.fillText('Tap to resume', w / 2, h * 0.705);
+      ctx.fillStyle = css(ink, 0.55);
+      ctx.fillText('Tap to resume', w / 2, h * 0.53);
     } else if (state === 'dormant') {
       ctx.font = F(400, U * 0.050);
       ctx.fillStyle = css(ink, 0.34);
@@ -188,7 +207,6 @@ export const bar = {
     ctx.textBaseline = 'alphabetic';
   },
 
-  /** The mark to finish with: as big as a thumb expects. */
   tapSpot(env) {
     const { w, h } = env;
     return { x: w / 2, y: h * 0.70, r: Math.max(38, Math.min(56, Math.min(w, h) * 0.105)) };
@@ -202,3 +220,44 @@ export const bar = {
     return { head: path[0], rest: { x, y }, path };
   }
 };
+
+/** Cover-fit: fill the frame, crop the overflow, never distort. */
+function cover(ctx, img, w, h, scale = 1) {
+  if (!img) return;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  const s = Math.max(w / iw, h / ih) * scale;
+  ctx.drawImage(img, (w - iw * s) / 2, (h - ih * s) / 2, iw * s, ih * s);
+}
+
+/**
+ * Break a headline into lines that fit, on spaces where there are any
+ * and between characters where there are not, and cut it with an
+ * ellipsis rather than let it run past the limit.
+ */
+function layout(ctx, text, maxW, maxLines) {
+  const words = String(text).split(/(\s+)/);
+  const lines = [];
+  let line = '';
+  const push = () => { lines.push(line.trim()); line = ''; };
+  for (const word of words) {
+    if (ctx.measureText(line + word).width <= maxW) { line += word; continue; }
+    if (line.trim()) push();
+    if (lines.length >= maxLines) break;
+    if (ctx.measureText(word).width <= maxW) { line = word.trimStart(); continue; }
+    for (const ch of word) {                       // a very long word, or no spaces at all
+      if (ctx.measureText(line + ch).width > maxW) { push(); if (lines.length >= maxLines) break; }
+      line += ch;
+    }
+  }
+  if (line.trim() && lines.length < maxLines) push();
+  if (lines.length === maxLines) {
+    let last = lines[maxLines - 1];
+    const rest = ctx.measureText(text).width > maxW * maxLines;
+    if (rest) {
+      while (last && ctx.measureText(last + '…').width > maxW) last = last.slice(0, -1);
+      lines[maxLines - 1] = last.replace(/[\s,;:]+$/, '') + '…';
+    }
+  }
+  return lines.slice(0, maxLines);
+}
