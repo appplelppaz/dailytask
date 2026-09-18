@@ -20,6 +20,7 @@ const RETRY = 20000;         // ms before trying again after a failure
 const RETRY_MAX = 300000;    // ms — the wait doubles up to this
 const LOOKAHEAD = 30;        // headlines translated ahead of the one on screen
 const BATCH_MIN = 12;        // texts worth waiting for before asking
+const GIVE_UP = 2;           // attempts at one text before letting it stand untranslated
 const KEEP = 2600;           // headlines held in the queue — five hours is 1,800
 const LOW = 150;             // when fewer than this are left, fetch the next page
 const AT_ONCE = 4;           // pictures being fetched at any one time
@@ -119,14 +120,16 @@ export function createNews() {
     const texts = [];
     const window = st.queue.slice(st.at, st.at + LOOKAHEAD);
     for (const it of window) {
-      if (!it.ja) texts.push({ text: it.title, lang: it.lang });
-      if (it.body && !it.bodyJa) texts.push({ text: it.body, lang: it.lang });
+      if (wants(it, 'ja')) texts.push({ text: it.title, lang: it.lang });
+      if (it.body && wants(it, 'bodyJa')) texts.push({ text: it.body, lang: it.lang });
     }
     if (!texts.length) return;
     // One request for sixty texts costs no more than one for two, so
-    // wait for a decent batch — unless the next headline up is still in
-    // its own language, in which case it goes now.
-    if (texts.length < BATCH_MIN && (!window[0] || window[0].ja)) return;
+    // wait for a decent batch — unless what is about to go on screen is
+    // still untranslated, headline or summary, in which case it goes now.
+    const next = window[0];
+    const soon = next && (wants(next, 'ja') || (next.body && wants(next, 'bodyJa')));
+    if (texts.length < BATCH_MIN && !soon) return;
     st.asking = true;
     try {
       const res = await fetch('/api/translate', {
@@ -145,8 +148,8 @@ export function createNews() {
       st.jaFails = 0;
       if (via) st.via = via;
       for (const it of window) {
-        if (!it.ja && ja[it.title]) it.ja = ja[it.title];
-        if (it.body && !it.bodyJa && ja[it.body]) it.bodyJa = ja[it.body];
+        if (wants(it, 'ja')) got(it, 'ja', ja[it.title]);
+        if (it.body && wants(it, 'bodyJa')) got(it, 'bodyJa', ja[it.body]);
       }
     } catch {
       // Something went wrong on the way. Back off rather than ask again
@@ -157,6 +160,22 @@ export function createNews() {
     } finally {
       st.asking = false;
     }
+  }
+
+  /**
+   * Whether a field is still worth asking for. Some headlines simply
+   * cannot be translated — a name on its own, a service that has
+   * nothing for that language — and asking again every frame for the
+   * one at the front of the queue would be a request every frame.
+   */
+  function wants(item, field) {
+    return !item[field] && !((item.missed && item.missed[field]) >= GIVE_UP);
+  }
+
+  function got(item, field, value) {
+    if (value) { item[field] = value; return; }
+    if (!item.missed) item.missed = {};
+    item.missed[field] = (item.missed[field] || 0) + 1;
   }
 
   return {

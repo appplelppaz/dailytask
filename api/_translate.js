@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────────────────────
 // Japanese.
 //
-// Four ways to get it, in order of what is configured:
+// Four ways to get it. Every one that has a key is tried in turn, best
+// first, so a spent quota falls to the next rather than to the bottom:
 //
 //   DEEPL_KEY     DeepL. The best of these for a headline. Free tier is
 //                 500,000 characters a month, which is perhaps two
@@ -14,13 +15,29 @@
 //   (nothing)     MyMemory, which needs no key at all. 5,000 words a day
 //                 anonymously, 50,000 with MYMEMORY_EMAIL set.
 //
-// Whatever is used, the rule is the same: a text that cannot be
-// translated is returned untranslated rather than dropped. The screen
-// always has something to show.
+// Whatever is used, two rules hold. A text that cannot be translated
+// comes back missing rather than wrong — the screen then shows the
+// original headline on its own, which is honest. And an answer that
+// contains no Japanese at all is treated as a failure: some services
+// hand back the English they were given when they have nothing, and
+// printing that where the reader expects Japanese is the one thing
+// worse than a blank line.
 // ─────────────────────────────────────────────────────────────
 
 const cache = new Map();
 const CACHE_MAX = 4000;
+
+// Kana, or CJK for a headline that is all names. A service that hands
+// back the English it was given — some do, when they have nothing — has
+// not translated anything, and the screen must not print it in the
+// place the reader expects Japanese.
+const JAPANESE = /[\u3040-\u30ff\u4e00-\u9fff\uff66-\uff9f]/;
+
+function usable(text, ja) {
+  const t = String(ja || '').trim();
+  if (!t || t === String(text).trim()) return false;
+  return JAPANESE.test(t);
+}
 
 function remember(text, ja) {
   cache.set(text, ja);
@@ -112,15 +129,25 @@ async function viaMyMemory(text, lang, email) {
 
 const BATCH = 40;            // texts in one request to a batching service
 const AT_ONCE = 14;          // parallel requests to a one-at-a-time service
+const TOGETHER = 5;          // batches in flight at once — one per language, in practice
 
-function chosen() {
+/**
+ * Every service configured, best first, with MyMemory always last as
+ * the one that needs no key. DeepL's free tier is half a million
+ * characters a month — an evening and a half of this — so when it runs
+ * out the work falls to the next key rather than straight to the
+ * bottom of the list.
+ */
+function chain() {
   const deepl = (process.env.DEEPL_KEY || '').trim();
   const gemini = (process.env.GEMINI_KEY || process.env.GOOGLE_API_KEY || '').trim();
   const claude = (process.env.ANTHROPIC_KEY || '').trim();
-  if (deepl) return { name: 'deepl', key: deepl, batch: viaDeepL };
-  if (gemini) return { name: 'gemini', key: gemini, batch: viaGemini };
-  if (claude) return { name: 'claude', key: claude, batch: viaClaude };
-  return { name: 'mymemory', key: '', batch: null };
+  const list = [];
+  if (deepl) list.push({ name: 'deepl', key: deepl, batch: viaDeepL });
+  if (gemini) list.push({ name: 'gemini', key: gemini, batch: viaGemini });
+  if (claude) list.push({ name: 'claude', key: claude, batch: viaClaude });
+  list.push({ name: 'mymemory', key: process.env.MYMEMORY_EMAIL || '', batch: null });
+  return list;
 }
 
 /**
@@ -137,55 +164,85 @@ async function translate(jobs, deadline) {
     if (hit) { out.set(job.text, hit); continue; }
     if (!todo.some((j) => j.text === job.text)) todo.push(job);
   }
-  if (!todo.length) return { out, via: chosen().name, done: 0 };
+  const services = chain();
+  if (!todo.length) return { out, via: services[0].name, done: 0 };
 
-  const service = chosen();
-  let via = service.name;
+  const keep = (job, ja) => {
+    if (!usable(job.text, ja)) return false;
+    const t = String(ja).trim();
+    out.set(job.text, t);
+    remember(job.text, t);
+    return true;
+  };
+
+  // Whatever one service cannot do is handed to the next.
   let left = todo;
+  let via = '';
+  for (const service of services) {
+    if (!left.length || Date.now() > deadline) break;
+    const before = out.size;
+    left = service.batch
+      ? await inBatches(service, left, keep, deadline)
+      : await oneAtATime(service, left, keep, deadline);
+    if (!via && out.size > before) via = service.name;
+  }
+  return { out, via: via || services[0].name, done: out.size };
+}
 
-  if (service.batch) {
-    const byLang = new Map();
-    for (const job of todo) {
-      if (!byLang.has(job.lang)) byLang.set(job.lang, []);
-      byLang.get(job.lang).push(job);
-    }
-    const failed = [];
-    let dead = false;
-    for (const [lang, group] of byLang) {
-      for (let i = 0; i < group.length; i += BATCH) {
-        const chunk = group.slice(i, i + BATCH);
-        if (dead || Date.now() > deadline) { failed.push(...chunk); continue; }
-        try {
-          const ja = await service.batch(chunk.map((j) => j.text), lang, service.key);
-          chunk.forEach((job, n) => {
-            const t = (ja[n] || '').trim();
-            if (t) { out.set(job.text, t); remember(job.text, t); }
-            else failed.push(job);
-          });
-        } catch (e) {
-          failed.push(...chunk);
-          if (e && e.fatal) { dead = true; via = 'mymemory'; }
-        }
-      }
-    }
-    left = failed.filter((j) => !out.has(j.text));
-    if (!left.length) return { out, via, done: out.size };
+/**
+ * A service that takes many texts at once. Each request carries a
+ * single language, so a mixed batch becomes several — run together
+ * rather than one after another, because the screen is waiting and the
+ * whole call has only a few seconds to answer.
+ */
+async function inBatches(service, jobs, keep, deadline) {
+  const byLang = new Map();
+  for (const job of jobs) {
+    if (!byLang.has(job.lang)) byLang.set(job.lang, []);
+    byLang.get(job.lang).push(job);
+  }
+  const chunks = [];
+  for (const [lang, group] of byLang) {
+    for (let i = 0; i < group.length; i += BATCH) chunks.push({ lang, jobs: group.slice(i, i + BATCH) });
   }
 
-  // MyMemory, one at a time, as the default and as the safety net
-  const mail = process.env.MYMEMORY_EMAIL;
+  const failed = [];
+  let at = 0;
+  let dead = false;                       // no key, or the month is spent
+  const worker = async () => {
+    while (at < chunks.length) {
+      const { lang, jobs: chunk } = chunks[at++];
+      if (dead || Date.now() > deadline) { failed.push(...chunk); continue; }
+      try {
+        const ja = await service.batch(chunk.map((j) => j.text), lang, service.key);
+        chunk.forEach((job, n) => { if (!keep(job, ja[n])) failed.push(job); });
+      } catch (e) {
+        failed.push(...chunk);
+        if (e && e.fatal) dead = true;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(TOGETHER, chunks.length) }, worker));
+  return failed;
+}
+
+/** MyMemory, which takes one text per request. */
+async function oneAtATime(service, jobs, keep, deadline) {
+  const failed = [];
   let i = 0;
   const worker = async () => {
-    while (i < left.length && Date.now() < deadline) {
-      const job = left[i++];
+    while (i < jobs.length) {
+      const job = jobs[i++];
+      if (Date.now() > deadline) { failed.push(job); continue; }
       try {
-        const ja = (await viaMyMemory(job.text, job.lang, mail)).trim();
-        if (ja) { out.set(job.text, ja); remember(job.text, ja); }
-      } catch { /* untranslated is still readable */ }
+        if (!keep(job, await viaMyMemory(job.text, job.lang, service.key))) failed.push(job);
+      } catch {
+        failed.push(job);                   // untranslated is still readable
+      }
     }
   };
   await Promise.all(Array.from({ length: AT_ONCE }, worker));
-  return { out, via, done: out.size };
+  return failed;
 }
 
-module.exports = { translate, provider: () => chosen().name };
+module.exports = { translate, provider: () => chain()[0].name };

@@ -135,7 +135,10 @@ export const bar = {
     // Three blocks, laid out from the bottom of the screen upwards: the
     // paper's own headline, the same in Japanese, and the opening of the
     // article in Japanese under it. If they will not all fit, the
-    // summary gives up lines first — the headline never does.
+    // summary gives up lines first — the headline never does. The two
+    // Japanese blocks are left out entirely until their Japanese
+    // arrives: only the paper's own headline is ever shown in the
+    // paper's own language.
     if (item && !big) {
       const x = w * 0.06, width = w * 0.88;
       const fresh = clamp((time - st.at) / 0.5);
@@ -153,7 +156,12 @@ export const bar = {
         ctx.font = F(400, jSize);
         const ja = item.ja ? layout(ctx, item.ja, width, max.ja) : [];
         ctx.font = F(400, sSize);
-        const tail = item.bodyJa || item.body || '';
+        // The opening of the article, in Japanese and only in Japanese.
+        // The original of it is carried so that it can be translated,
+        // never so that it can be shown: an English or Chinese sentence
+        // printed in the place the reader expects Japanese is worse
+        // than leaving the line out altogether.
+        const tail = item.bodyJa || '';
         const sum = tail ? layout(ctx, tail, width, max.sum) : [];
         const gapJa = ja.length ? jSize * 1.5 : 0;
         const gapSum = sum.length ? sSize * 1.9 : 0;

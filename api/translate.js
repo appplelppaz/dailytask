@@ -16,7 +16,7 @@ const { translate, provider } = require('./_translate.js');
 
 const MAX_TEXTS = 60;
 const MAX_CHARS = 600;
-const BUDGET = 12000;          // ms
+const BUDGET = 15000;          // ms — the function itself is allowed twenty
 
 function readBody(req) {
   if (req.body) return typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
