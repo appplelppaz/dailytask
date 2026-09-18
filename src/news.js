@@ -28,6 +28,7 @@ export function createNews(rng) {
   };
 
   function preload(item) {
+    if (!item.image) { st.ready.push(item); return; }   // nothing to wait for
     if (st.loading > 3) return;
     st.loading++;
     const img = new Image();
@@ -54,7 +55,7 @@ export function createNews(rng) {
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
       st.fails = 0;
-      const fresh = (data.items || []).filter((it) => it.image && it.title && !st.seen.has(it.title));
+      const fresh = (data.items || []).filter((it) => it.title && !st.seen.has(it.title));
       for (const it of fresh) st.seen.add(it.title);
       // newest at the front, and the queue never grows without bound
       st.items = fresh.concat(st.items).slice(0, 80);

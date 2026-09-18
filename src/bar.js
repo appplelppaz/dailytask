@@ -15,7 +15,7 @@
 import { clamp, css, TAU } from './util.js';
 import { createNews } from './news.js';
 
-const HOLD = 7;          // seconds a headline stays on screen
+const HOLD = 10;         // seconds a headline stays on screen
 const FADE = 0.9;        // seconds of cross-fade between two
 
 export const bar = {
@@ -63,7 +63,7 @@ export const bar = {
     const held = state === 'paused';
     const shade = held ? 0.34 : state === 'closing' ? 0.42 : 1;
     const item = st.now;
-    if (item) {
+    if (item && item.img) {
       const age = time - st.at;
       const inAlpha = clamp(age / FADE);
       if (st.prev && st.prev.img && inAlpha < 1) {
@@ -80,24 +80,34 @@ export const bar = {
       top.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = top;
       ctx.fillRect(0, 0, w, h * 0.20);
-      const foot = ctx.createLinearGradient(0, h, 0, h * 0.42);
-      foot.addColorStop(0, 'rgba(0,0,0,.86)');
-      foot.addColorStop(0.45, 'rgba(0,0,0,.66)');
+      const foot = ctx.createLinearGradient(0, h, 0, h * 0.28);
+      foot.addColorStop(0, 'rgba(0,0,0,.93)');
+      foot.addColorStop(0.35, 'rgba(0,0,0,.82)');
+      foot.addColorStop(0.72, 'rgba(0,0,0,.45)');
       foot.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = foot;
-      ctx.fillRect(0, h * 0.42, w, h * 0.58);
+      ctx.fillRect(0, h * 0.28, w, h * 0.72);
     } else {
-      const wash = ctx.createRadialGradient(w / 2, h * 0.46, 0, w / 2, h * 0.46, Math.max(w, h) * 0.7);
-      wash.addColorStop(0, css(col, 0.12));
+      // no photograph with this one, or none at all yet: the task's
+      // colour, faintly, so the screen is never blank
+      const wash = ctx.createRadialGradient(w / 2, h * 0.34, 0, w / 2, h * 0.34, Math.max(w, h) * 0.8);
+      wash.addColorStop(0, css(col, item ? 0.30 : 0.12, item ? -6 : 0));
       wash.addColorStop(1, css(col, 0));
       ctx.fillStyle = wash;
       ctx.fillRect(0, 0, w, h);
+      if (item) {
+        const deep = ctx.createLinearGradient(0, h * 0.3, 0, h);
+        deep.addColorStop(0, 'rgba(0,0,0,0)');
+        deep.addColorStop(1, 'rgba(0,0,0,.55)');
+        ctx.fillStyle = deep;
+        ctx.fillRect(0, h * 0.3, w, h * 0.7);
+      }
     }
 
     ctx.textBaseline = 'middle';
 
     // ── the name of the task ──
-    const big = !item || state === 'closing';
+    const big = !item || state === 'closing';   // no headline: the name takes the screen
     const title = state === 'closing' ? 'WELL DONE' : clock.taskName;
     const latin = /^[\x20-\x7e]+$/.test(title);
     let size = U * (big ? (latin ? 0.145 : 0.115) : 0.048);
@@ -122,32 +132,60 @@ export const bar = {
     ctx.letterSpacing = '0px';
 
     // ── the headline ──
+    // The paper's own words first, the Japanese under them, both laid
+    // out from the bottom of the screen upwards so the block sits on the
+    // bar however many lines each of them takes.
     if (item && !big) {
-      const x = w * 0.06, right = w * 0.94;
-      const bottom = h * 0.90;
-      const fresh = clamp((time - st.at) / 0.5);          // it arrives, it does not blink on
-
+      const x = w * 0.06, right = w * 0.94, width = right - x;
+      const fresh = clamp((time - st.at) / 0.5);
       ctx.textAlign = 'left';
-      ctx.font = F(400, Math.max(18, U * 0.062));
-      const lines = layout(ctx, item.title, right - x, 4);
-      const lh = Math.max(24, U * 0.078);
-      let y = bottom - (lines.length - 1) * lh;
 
-      // masthead, above the headline
+      const oSize = Math.max(21, U * 0.070);
+      const oLead = oSize * 1.26;
+      const jSize = Math.max(17, U * 0.055);
+      const jLead = jSize * 1.34;
+
+      ctx.font = F(400, oSize);
+      const lines = layout(ctx, item.title, width, 3);
+      ctx.font = F(400, jSize);
+      const ja = item.ja ? layout(ctx, item.ja, width, 3) : [];
+
+      // Laid out from the bottom up: the Japanese block sits on the bar,
+      // the original sits on top of it, the masthead on top of that.
+      const bottom = h * 0.905;
+      const jaFirst = bottom - (ja.length ? (ja.length - 1) * jLead : 0);
+      const gap = ja.length ? jSize * 1.85 : 0;
+      let oy = jaFirst - gap - (lines.length - 1) * oLead;
+      const headY = oy - oLead * 0.95;
+      let y = jaFirst;
+
       ctx.globalAlpha = fresh;
-      ctx.font = F(600, Math.max(12, U * 0.032));
-      ctx.letterSpacing = '0.18em';
-      ctx.fillStyle = css(col, 0.95, 20);
-      ctx.fillText(item.source.toUpperCase(), x, y - lh * 0.95);
+
+      // the masthead, above everything
+      ctx.font = F(600, Math.max(13, U * 0.036));
+      ctx.letterSpacing = '0.16em';
+      ctx.fillStyle = 'rgba(0,0,0,.7)';
+      ctx.fillText(item.source.toUpperCase(), x + 1.5, headY + 2);
+      ctx.fillStyle = css(col, 0.97, 22);
+      ctx.fillText(item.source.toUpperCase(), x, headY);
       ctx.letterSpacing = '0px';
 
-      ctx.font = F(400, Math.max(18, U * 0.062));
+      ctx.font = F(400, oSize);
       for (const line of lines) {
-        ctx.fillStyle = 'rgba(0,0,0,.75)';
-        ctx.fillText(line, x + 1.5, y + 2);
+        ctx.fillStyle = 'rgba(0,0,0,.78)';
+        ctx.fillText(line, x + 1.5, oy + 2);
         ctx.fillStyle = css(ink, 0.98);
+        ctx.fillText(line, x, oy);
+        oy += oLead;
+      }
+
+      ctx.font = F(400, jSize);
+      for (const line of ja) {
+        ctx.fillStyle = 'rgba(0,0,0,.78)';
+        ctx.fillText(line, x + 1.5, y + 2);
+        ctx.fillStyle = css(ink, 0.82);
         ctx.fillText(line, x, y);
-        y += lh;
+        y += jLead;
       }
       ctx.globalAlpha = 1;
     }
@@ -246,7 +284,13 @@ function layout(ctx, text, maxW, maxLines) {
     if (lines.length >= maxLines) break;
     if (ctx.measureText(word).width <= maxW) { line = word.trimStart(); continue; }
     for (const ch of word) {                       // a very long word, or no spaces at all
-      if (ctx.measureText(line + ch).width > maxW) { push(); if (lines.length >= maxLines) break; }
+      // Japanese has no spaces, and a line may not open with a mark that
+      // closes something — those stay with the line they belong to.
+      const closing = '、。，．）」』】〉》!?！？,.:;：；'.includes(ch);
+      if (ctx.measureText(line + ch).width > maxW && !closing) {
+        push();
+        if (lines.length >= maxLines) break;
+      }
       line += ch;
     }
   }
