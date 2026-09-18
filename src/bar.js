@@ -131,62 +131,70 @@ export const bar = {
     ctx.fillText(title, tx, ty);
     ctx.letterSpacing = '0px';
 
-    // ── the headline ──
-    // The paper's own words first, the Japanese under them, both laid
-    // out from the bottom of the screen upwards so the block sits on the
-    // bar however many lines each of them takes.
+    // ── the headline, then what the article says ──
+    // Three blocks, laid out from the bottom of the screen upwards: the
+    // paper's own headline, the same in Japanese, and the opening of the
+    // article in Japanese under it. If they will not all fit, the
+    // summary gives up lines first — the headline never does.
     if (item && !big) {
-      const x = w * 0.06, right = w * 0.94, width = right - x;
+      const x = w * 0.06, width = w * 0.88;
       const fresh = clamp((time - st.at) / 0.5);
-      ctx.textAlign = 'left';
-
-      const oSize = Math.max(21, U * 0.070);
-      const oLead = oSize * 1.26;
-      const jSize = Math.max(17, U * 0.055);
-      const jLead = jSize * 1.34;
-
-      ctx.font = F(400, oSize);
-      const lines = layout(ctx, item.title, width, 3);
-      ctx.font = F(400, jSize);
-      const ja = item.ja ? layout(ctx, item.ja, width, 3) : [];
-
-      // Laid out from the bottom up: the Japanese block sits on the bar,
-      // the original sits on top of it, the masthead on top of that.
       const bottom = h * 0.905;
-      const jaFirst = bottom - (ja.length ? (ja.length - 1) * jLead : 0);
-      const gap = ja.length ? jSize * 1.85 : 0;
-      let oy = jaFirst - gap - (lines.length - 1) * oLead;
-      const headY = oy - oLead * 0.95;
-      let y = jaFirst;
+      const ceiling = h * 0.30;
 
+      const oSize = Math.max(20, U * 0.064), oLead = oSize * 1.26;
+      const jSize = Math.max(16, U * 0.050), jLead = jSize * 1.34;
+      const sSize = Math.max(14, U * 0.040), sLead = sSize * 1.46;
+      const headSize = Math.max(13, U * 0.034);
+
+      const fit = (max) => {
+        ctx.font = F(400, oSize);
+        const head = layout(ctx, item.title, width, max.head);
+        ctx.font = F(400, jSize);
+        const ja = item.ja ? layout(ctx, item.ja, width, max.ja) : [];
+        ctx.font = F(400, sSize);
+        const tail = item.bodyJa || item.body || '';
+        const sum = tail ? layout(ctx, tail, width, max.sum) : [];
+        const gapJa = ja.length ? jSize * 1.5 : 0;
+        const gapSum = sum.length ? sSize * 1.9 : 0;
+        const sumTop = bottom - (sum.length ? (sum.length - 1) * sLead : 0);
+        const jaTop = sumTop - gapSum - (ja.length ? (ja.length - 1) * jLead : 0);
+        const headTop = jaTop - gapJa - (head.length - 1) * oLead;
+        return { head, ja, sum, sumTop, jaTop, headTop, top: headTop - oLead * 0.95 };
+      };
+
+      let box = fit({ head: 3, ja: 2, sum: 4 });
+      for (const max of [{ head: 3, ja: 2, sum: 3 }, { head: 3, ja: 2, sum: 2 },
+                         { head: 2, ja: 2, sum: 2 }, { head: 2, ja: 1, sum: 2 }]) {
+        if (box.top >= ceiling) break;
+        box = fit(max);
+      }
+
+      ctx.textAlign = 'left';
       ctx.globalAlpha = fresh;
 
       // the masthead, above everything
-      ctx.font = F(600, Math.max(13, U * 0.036));
+      ctx.font = F(600, headSize);
       ctx.letterSpacing = '0.16em';
       ctx.fillStyle = 'rgba(0,0,0,.7)';
-      ctx.fillText(item.source.toUpperCase(), x + 1.5, headY + 2);
+      ctx.fillText(item.source.toUpperCase(), x + 1.5, box.top + 2);
       ctx.fillStyle = css(col, 0.97, 22);
-      ctx.fillText(item.source.toUpperCase(), x, headY);
+      ctx.fillText(item.source.toUpperCase(), x, box.top);
       ctx.letterSpacing = '0px';
 
-      ctx.font = F(400, oSize);
-      for (const line of lines) {
-        ctx.fillStyle = 'rgba(0,0,0,.78)';
-        ctx.fillText(line, x + 1.5, oy + 2);
-        ctx.fillStyle = css(ink, 0.98);
-        ctx.fillText(line, x, oy);
-        oy += oLead;
-      }
-
-      ctx.font = F(400, jSize);
-      for (const line of ja) {
-        ctx.fillStyle = 'rgba(0,0,0,.78)';
-        ctx.fillText(line, x + 1.5, y + 2);
-        ctx.fillStyle = css(ink, 0.82);
-        ctx.fillText(line, x, y);
-        y += jLead;
-      }
+      const run = (lines, y, lead, size, alpha) => {
+        ctx.font = F(400, size);
+        for (const line of lines) {
+          ctx.fillStyle = 'rgba(0,0,0,.8)';
+          ctx.fillText(line, x + 1.5, y + 2);
+          ctx.fillStyle = css(ink, alpha);
+          ctx.fillText(line, x, y);
+          y += lead;
+        }
+      };
+      run(box.head, box.headTop, oLead, oSize, 0.98);
+      run(box.ja, box.jaTop, jLead, jSize, 0.86);
+      run(box.sum, box.sumTop, sLead, sSize, 0.75);
       ctx.globalAlpha = 1;
     }
 
@@ -277,31 +285,43 @@ function layout(ctx, text, maxW, maxLines) {
   const words = String(text).split(/(\s+)/);
   const lines = [];
   let line = '';
+  const fits = (t) => ctx.measureText(t).width <= maxW;
   const push = () => { lines.push(line.trim()); line = ''; };
+
   for (const word of words) {
-    if (ctx.measureText(line + word).width <= maxW) { line += word; continue; }
-    if (line.trim()) push();
-    if (lines.length >= maxLines) break;
-    if (ctx.measureText(word).width <= maxW) { line = word.trimStart(); continue; }
-    for (const ch of word) {                       // a very long word, or no spaces at all
-      // Japanese has no spaces, and a line may not open with a mark that
-      // closes something — those stay with the line they belong to.
-      const closing = '、。，．）」』】〉》!?！？,.:;：；'.includes(ch);
-      if (ctx.measureText(line + ch).width > maxW && !closing) {
+    if (fits(line + word)) { line += word; continue; }
+    if (fits(word.trim())) {                       // it will fit on a line of its own
+      if (line.trim()) push();
+      if (lines.length >= maxLines) break;
+      line = word.trimStart();
+      continue;
+    }
+    // Too long for any line — Japanese and Chinese, which have no spaces,
+    // arrive here. Break between characters, carrying on from whatever is
+    // already on this line rather than starting a new one, and never
+    // begin a line with a mark that closes something.
+    let full = false;
+    for (const ch of word) {
+      const closing = '、。，．）」』】〉》!?！？,.:;：；…'.includes(ch);
+      if (!fits(line + ch) && line.trim() && !closing) {
         push();
-        if (lines.length >= maxLines) break;
+        if (lines.length >= maxLines) { full = true; break; }
       }
       line += ch;
     }
+    if (full) break;
   }
   if (line.trim() && lines.length < maxLines) push();
+
   if (lines.length === maxLines) {
-    let last = lines[maxLines - 1];
-    const rest = ctx.measureText(text).width > maxW * maxLines;
-    if (rest) {
-      while (last && ctx.measureText(last + '…').width > maxW) last = last.slice(0, -1);
-      lines[maxLines - 1] = last.replace(/[\s,;:]+$/, '') + '…';
+    const shown = lines.join('').replace(/\s+/g, '');
+    const whole = String(text).replace(/\s+/g, '');
+    if (shown.length < whole.length - 1) {         // something was left out
+      let last = lines[maxLines - 1];
+      while (last && !fits(last + '…')) last = last.slice(0, -1);
+      lines[maxLines - 1] = last.replace(/[\s,;:、。]+$/, '') + '…';
     }
   }
   return lines.slice(0, maxLines);
 }
+

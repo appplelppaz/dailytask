@@ -59,11 +59,12 @@ const SOURCES = [
 ];
 
 const PER_SOURCE = 5;          // headlines taken from each paper
+const BODY_MAX = 300;          // characters of the article's opening kept
 const FEED_TIMEOUT = 6000;     // ms before a slow paper is left out
-const MAX_ITEMS = 50;
+const MAX_ITEMS = 40;
 const NO_PICTURE_SHARE = 0.3;  // how much of the list may be headlines without one
-const TRANSLATE_BUDGET = 10000; // ms spent translating, at most
-const TRANSLATE_AT_ONCE = 12;
+const TRANSLATE_BUDGET = 16000; // ms spent translating, at most
+const TRANSLATE_AT_ONCE = 14;
 
 // Warm instances keep what they have already translated, so the same
 // headline is never sent twice.
@@ -77,14 +78,36 @@ const ENTITIES = {
 };
 
 function decode(s) {
-  return String(s || '')
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/<[^>]+>/g, ' ')
+  const entities = (t) => t
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d))
-    .replace(/&([a-z]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] || m)
-    .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/&([a-z]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] || m);
+  const strip = (t) => t.replace(/<[^>]+>/g, ' ');
+  // Papers escape their own markup as entities, so the tags only appear
+  // once the entities are decoded — which means stripping twice.
+  let out = String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+  out = strip(out);
+  out = strip(entities(out));
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+
+/**
+ * The opening of the article. A feed's description is the paper's own
+ * summary of it; where that is missing or is only the headline again,
+ * the full text is used instead, cut at a sentence.
+ */
+function pickBody(block, title) {
+  let body = tag(block, 'description');
+  const full = tag(block, 'content:encoded');
+  if (body.length < 60 && full.length > body.length) body = full;
+  if (!body) return '';
+  if (body.slice(0, 40) === title.slice(0, 40) && body.length < title.length + 40) return '';
+  body = body.replace(/\s*(Read more|Continue reading|続きを読む)[^]*$/i, '').trim();
+  if (body.length <= BODY_MAX) return body;
+  const cut = body.slice(0, BODY_MAX);
+  const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('。'), cut.lastIndexOf('！'), cut.lastIndexOf('？'));
+  return (stop > BODY_MAX * 0.5 ? cut.slice(0, stop + 1) : cut.trim() + '…');
 }
 
 const tag = (block, name) => {
@@ -150,6 +173,7 @@ async function readFeed(src) {
         place: src.place,
         lang: src.lang,
         title,
+        body: pickBody(block, title),
         link: tag(block, 'link'),
         image: pickImage(block, src.url),
         at: Date.parse(tag(block, 'pubDate') || tag(block, 'dc:date')) || null
@@ -177,8 +201,9 @@ async function viaDeepL(text, lang, key) {
   return d.translations[0].text;
 }
 
-async function viaMyMemory(text, lang) {
-  const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${lang}|ja`;
+async function viaMyMemory(text, lang, email) {
+  const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${lang}|ja`
+    + (email ? `&de=${encodeURIComponent(email)}` : '');
   const res = await fetch(u, { headers: { 'User-Agent': 'night-routine/1.0' } });
   if (!res.ok) throw new Error(res.status);
   const d = await res.json();
@@ -189,30 +214,35 @@ async function viaMyMemory(text, lang) {
 
 async function translate(items, deadline) {
   const key = process.env.DEEPL_KEY;
-  const todo = [];
+  const mail = process.env.MYMEMORY_EMAIL;          // raises the free daily limit
+  const jobs = [];
   for (const it of items) {
-    if (it.lang === 'ja') continue;
-    const hit = cache.get(it.title);
-    if (hit) { it.ja = hit; continue; }
-    todo.push(it);
+    for (const [from, to] of [['title', 'ja'], ['body', 'bodyJa']]) {
+      const text = it[from];
+      if (!text || it.lang === 'ja') continue;
+      const hit = cache.get(text);
+      if (hit) { it[to] = hit; continue; }
+      jobs.push({ it, to, text, lang: it.lang });
+    }
   }
+  // headlines before bodies: if time runs out, the headline is the part
+  // that must be there
+  jobs.sort((a, b) => (a.to === 'ja' ? -1 : 1) - (b.to === 'ja' ? -1 : 1));
+
   let i = 0;
   const worker = async () => {
-    while (i < todo.length && Date.now() < deadline) {
-      const it = todo[i++];
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), Math.max(1000, deadline - Date.now()));
+    while (i < jobs.length && Date.now() < deadline) {
+      const job = jobs[i++];
       try {
-        const ja = key ? await viaDeepL(it.title, it.lang, key) : await viaMyMemory(it.title, it.lang);
+        const ja = key ? await viaDeepL(job.text, job.lang, key)
+                       : await viaMyMemory(job.text, job.lang, mail);
         if (ja && ja.trim()) {
-          it.ja = ja.trim();
-          cache.set(it.title, it.ja);
+          job.it[job.to] = ja.trim();
+          cache.set(job.text, ja.trim());
           if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
         }
       } catch {
         /* a headline without its translation still reads */
-      } finally {
-        clearTimeout(t);
       }
     }
   };
@@ -251,12 +281,17 @@ module.exports = async (req, res) => {
   await translate(out, Date.now() + TRANSLATE_BUDGET);
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, s-maxage=180, stale-while-revalidate=900');
+  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
   res.setHeader('Access-Control-Allow-Origin', '*');
+  // The original opening is only sent when its translation is missing —
+  // otherwise it is weight on the wire for something never shown.
+  for (const it of out) if (it.bodyJa) delete it.body;
+
   res.status(200).send(JSON.stringify({
     updated: Date.now(),
     papers: SOURCES.length,
     translated: out.filter((i) => i.ja).length,
+    summarised: out.filter((i) => i.bodyJa).length,
     items: out
   }));
 };
