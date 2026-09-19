@@ -8,6 +8,12 @@
 // because what has just happened is worth more than what happened an
 // hour ago.
 //
+// What has been on screen before is remembered between evenings, so a
+// night opens on what the papers have published since rather than on
+// the stories it closed with. Roughly half the wire turns over in a
+// day; the half that has not is not thrown away but sent to the back
+// of the queue, oldest memory first, so the screen never runs out.
+//
 // Japanese is fetched thirty headlines ahead of where the screen is,
 // in batches — translating the whole queue up front would spend a
 // month of free translation quota in a single evening, and most of it
@@ -15,12 +21,15 @@
 // would be a request every ten seconds all evening.
 // ─────────────────────────────────────────────────────────────
 
+import { createMemory } from './memory.js';
+
 const POLL = 240000;         // ms between refreshes of the list
 const RETRY = 20000;         // ms before trying again after a failure
 const RETRY_MAX = 300000;    // ms — the wait doubles up to this
 const LOOKAHEAD = 30;        // headlines translated ahead of the one on screen
 const BATCH_MIN = 12;        // texts worth waiting for before asking
 const GIVE_UP = 2;           // attempts at one text before letting it stand untranslated
+const REACH = 120;           // headlines brought back from the spare list at a time
 const KEEP = 2600;           // headlines held in the queue — five hours is 1,800
 const LOW = 150;             // when fewer than this are left, fetch the next page
 const AT_ONCE = 4;           // pictures being fetched at any one time
@@ -28,8 +37,10 @@ const STUCK = 15000;         // ms after which a picture is presumed lost
 const WAIT = 2500;           // ms the screen waits for a picture before going without
 
 export function createNews() {
+  const memory = createMemory();
   const st = {
-    queue: [],               // everything known, in the order it will be shown
+    queue: [],               // not seen on any earlier evening, in the order it will be shown
+    spare: [],               // seen before: kept back, and used only if the queue runs out
     at: 0,                   // how far through the queue the screen has got
     seen: new Set(),         // titles, so a headline is never queued twice
     fetched: 0,              // when the list was last pulled
@@ -78,10 +89,17 @@ export function createNews() {
     st.via = data.via || st.via;
     st.total = data.total || st.total;
     const fresh = (data.items || []).filter((it) => it.title && !st.seen.has(it.title));
-    for (const it of fresh) st.seen.add(it.title);
-    if (offset) st.queue.push(...fresh);          // a later page goes on the end
-    else st.queue.splice(st.at, 0, ...fresh);     // what has just happened goes next
-    if (st.queue.length > KEEP) st.queue.splice(0, st.queue.length - KEEP);
+    const New = [];
+    for (const it of fresh) {
+      st.seen.add(it.title);
+      const days = memory.age(it.title);
+      if (days === Infinity) New.push(it);
+      else { it.days = days; st.spare.push(it); }   // read on an earlier evening
+    }
+    if (offset) st.queue.push(...New);            // a later page goes on the end
+    else st.queue.splice(st.at, 0, ...New);       // what has just happened goes next
+    if (st.queue.length > KEEP) st.at -= st.queue.splice(0, st.queue.length - KEEP).length;
+    if (st.at < 0) st.at = 0;
     return (data.items || []).length;
   }
 
@@ -178,6 +196,18 @@ export function createNews() {
     item.missed[field] = (item.missed[field] || 0) + 1;
   }
 
+  /**
+   * Nothing unread is left. Take the headlines read longest ago — a
+   * month-old story is closer to new than one from last night — and
+   * put them back in the queue.
+   */
+  function reach() {
+    if (!st.spare.length) return false;
+    st.spare.sort((a, b) => b.days - a.days);
+    st.queue.push(...st.spare.splice(0, REACH));
+    return true;
+  }
+
   return {
     /** Called every frame; nearly always does nothing. */
     pump() {
@@ -195,8 +225,9 @@ export function createNews() {
       for (let n = 0; n < 8; n++) {
         const it = st.queue[st.at];
         if (!it) {
+          if (reach()) continue;              // nothing new left: bring back the oldest read
           if (!st.queue.length) return null;
-          st.at = 0;                          // round again; better than a blank screen
+          st.at = 0;                          // and only then round again
           continue;
         }
         // Its picture is still on its way. Wait a couple of seconds —
@@ -212,11 +243,14 @@ export function createNews() {
           it.img = null;
         }
         st.at++;
+        memory.mark(it.title);  // not to be shown again for a month
         return it;              // if its picture never arrived, the headline still stands
       }
       return null;
     },
-    get ready() { return st.queue.length - st.at; },
+    get ready() { return st.queue.length - st.at + st.spare.length; },
+    get unread() { return st.queue.length - st.at; },
+    get remembered() { return memory.size; },
     get known() { return st.queue.length; },
     get total() { return st.total; },
     get via() { return st.via; }
